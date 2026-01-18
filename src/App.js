@@ -1,6 +1,15 @@
 import { useState, useRef, useEffect } from 'react';
 import './App.css';
-import { initThree, createParticles, changeColor, changeSize, handleResize, cleanup } from './pages/space.js';
+import { 
+  initThree, 
+  createParticles, 
+  changeColor, 
+  changeSize, 
+  handleResize, 
+  cleanup,
+  initHandTracking,
+  stopHandTracking
+} from './pages/space';
 
 function App() {
   const [prompt, setPrompt] = useState('');
@@ -15,6 +24,8 @@ function App() {
   const [selectedShape, setSelectedShape] = useState('heart');
   const [particleColor, setParticleColor] = useState('#00ffcc');
   const [particleSize, setParticleSize] = useState(0.05);
+  const [handTrackingEnabled, setHandTrackingEnabled] = useState(false);
+  const [handStatus, setHandStatus] = useState({ handCount: 0, scale: 1, expansion: 1 });
 
   const HF_API_KEY = process.env.REACT_APP_HF_API_KEY;
   const chatEndRef = useRef(null);
@@ -40,6 +51,7 @@ function App() {
       if (activeTab !== 'space' && threeInitialized.current) {
         cleanup();
         threeInitialized.current = false;
+        setHandTrackingEnabled(false);
       }
     };
   }, [activeTab]);
@@ -55,6 +67,24 @@ function App() {
     }
   }, [activeTab]);
 
+  // Hand tracking toggle
+  const toggleHandTracking = async () => {
+    if (!handTrackingEnabled) {
+      const success = await initHandTracking('hand-video', (status) => {
+        setHandStatus(status);
+      });
+      if (success) {
+        setHandTrackingEnabled(true);
+      } else {
+        setError('Failed to initialize hand tracking. Please allow camera access.');
+      }
+    } else {
+      stopHandTracking();
+      setHandTrackingEnabled(false);
+      setHandStatus({ handCount: 0, scale: 1, expansion: 1 });
+    }
+  };
+
   const imageToBase64 = (file) => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -66,25 +96,20 @@ function App() {
 
   const analyzeImage = async (imageDataUrl) => {
     const base64 = imageDataUrl.split(",")[1];
-
     const res = await fetch("http://localhost:3001/analyze-image", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ imageBase64: base64 }),
     });
-
     const data = await res.json();
     if (data.error) throw new Error(data.error);
-
     return data[0]?.generated_text || "No description detected.";
   };
 
   const getAstroSageAnalysis = async (imageDescription, userQuestion) => {
     try {
       console.log('🌟 Getting AstroSage analysis...');
-      
       const enhancedPrompt = `Based on this astronomical image description: "${imageDescription}". ${userQuestion || 'Please identify and explain the types of stars, galaxies, and celestial objects visible in this image.'}`;
-
       const res = await fetch(
         "https://router.huggingface.co/featherless-ai/v1/completions",
         {
@@ -102,10 +127,8 @@ function App() {
           })
         }
       );
-
       const text = await res.text();
       const data = JSON.parse(text);
-
       if (data.choices?.[0]?.message?.content) {
         return data.choices[0].message.content.trim();
       } else if (data.choices?.[0]?.text) {
@@ -113,7 +136,6 @@ function App() {
       } else if (data.error) {
         throw new Error(data.error.message || data.error);
       }
-      
       throw new Error('Unexpected response from AstroSage');
     } catch (err) {
       console.error('AstroSage error:', err);
@@ -125,7 +147,6 @@ function App() {
     const file = e.target.files[0];
     if (file) {
       setSelectedImage(file);
-      
       const reader = new FileReader();
       reader.onloadend = () => {
         setImagePreview(reader.result);
@@ -139,25 +160,19 @@ function App() {
       setError('❌ API key not found.');
       return;
     }
-
     if (!selectedImage && !prompt.trim()) {
       setError('Please provide an image or enter a question');
       return;
     }
-
     setLoading(true);
     setError('');
-
     try {
       let finalResponse = '';
       let imageDescription = '';
-
       if (selectedImage) {
         const imageBase64 = await imageToBase64(selectedImage);
         imageDescription = await analyzeImage(imageBase64);
-        
         console.log('Image description:', imageDescription);
-
         finalResponse = await getAstroSageAnalysis(imageDescription, prompt);
       } else {
         const res = await fetch(
@@ -177,10 +192,8 @@ function App() {
             })
           }
         );
-
         const text = await res.text();
         const data = JSON.parse(text);
-
         if (data.choices?.[0]?.message?.content) {
           finalResponse = data.choices[0].message.content.trim();
         } else if (data.choices?.[0]?.text) {
@@ -189,7 +202,6 @@ function App() {
           throw new Error(data.error.message || data.error);
         }
       }
-
       if (finalResponse) {
         setResponses(prev => [...prev, {
           prompt: prompt || 'Analyze this astronomical image',
@@ -198,7 +210,6 @@ function App() {
           imageDescription: imageDescription
         }]);
       }
-
       setPrompt('');
       setSelectedImage(null);
       setImagePreview(null);
@@ -209,11 +220,9 @@ function App() {
       console.error('Error:', err);
       setError(`Error: ${err.message}`);
     }
-
     setLoading(false);
   };
 
-  // Space tab handlers
   const handleShapeChange = (shape) => {
     setSelectedShape(shape);
     createParticles(shape);
@@ -242,13 +251,11 @@ function App() {
             <p>I'll identify and explain what's in the image!</p>
           </div>
         )}
-
         {responses.map((item, idx) => (
           <div key={idx} className="response-card">
             <div className="response-header">
               <span className="response-label">You:</span> {item.prompt}
             </div>
-
             {item.image && (
               <div className="response-image-container">
                 <img 
@@ -263,7 +270,6 @@ function App() {
                 )}
               </div>
             )}
-
             <div className="response-text">
               <strong className="response-label">🌟 AstroSage:</strong>
               <p style={{ marginTop: '8px' }}>{item.response}</p>
@@ -272,7 +278,6 @@ function App() {
         ))}
         <div ref={chatEndRef}></div>
       </main>
-
       <div className="input-area">
         {imagePreview && (
           <div className="image-preview-container">
@@ -293,7 +298,6 @@ function App() {
             </button>
           </div>
         )}
-
         <div className="input-controls">
           <input
             type="file"
@@ -302,7 +306,6 @@ function App() {
             onChange={handleImageChange}
             className="file-input"
           />
-          
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={loading}
@@ -311,7 +314,6 @@ function App() {
           >
             📷
           </button>
-
           <textarea
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
@@ -324,7 +326,6 @@ function App() {
               }
             }}
           />
-          
           <button
             onClick={generateResponse}
             disabled={loading || (!selectedImage && !prompt.trim())}
@@ -333,7 +334,6 @@ function App() {
             {loading ? '⏳' : '🚀'}
           </button>
         </div>
-
         <p className="input-hint">
           💡 Tip: Upload an image of stars/galaxies, or just ask a question. Ctrl+Enter to send.
         </p>
@@ -346,7 +346,7 @@ function App() {
       <div className="space-container">
         <h2 className="space-title">🌌 3D Particle Universe</h2>
         <p className="space-description">
-          Explore interactive 3D particle shapes. Choose different formations and customize colors!
+          Explore interactive 3D particle shapes. Enable hand tracking to control with your hands!
         </p>
         
         {/* Three.js Canvas Container */}
@@ -354,7 +354,40 @@ function App() {
           id="space-canvas-container" 
           ref={spaceContainerRef}
           className="space-canvas"
-        ></div>
+        >
+          {/* Hand tracking video overlay */}
+          {handTrackingEnabled && (
+            <video 
+              id="hand-video" 
+              autoPlay 
+              playsInline
+              className="hand-video-overlay"
+            />
+          )}
+        </div>
+
+        {/* Hand Tracking Status */}
+        <div className="hand-status">
+          <button 
+            onClick={toggleHandTracking}
+            className={`hand-tracking-toggle ${handTrackingEnabled ? 'active' : ''}`}
+          >
+            {handTrackingEnabled ? '👋 Hand Tracking: ON' : '✋ Enable Hand Tracking'}
+          </button>
+          {handTrackingEnabled && (
+            <div className="hand-info">
+              <span className={handStatus.handCount === 2 ? 'active' : ''}>
+                Hands Detected: {handStatus.handCount}/2
+              </span>
+              {handStatus.handCount === 2 && (
+                <>
+                  <span>Scale: {handStatus.scale?.toFixed(2)}</span>
+                  <span>Expansion: {handStatus.expansion?.toFixed(2)}</span>
+                </>
+              )}
+            </div>
+          )}
+        </div>
 
         {/* Controls */}
         <div className="space-controls">
@@ -395,6 +428,10 @@ function App() {
               className="size-slider"
             />
           </div>
+
+          <div className="control-hint">
+            💡 Use two hands: Spread apart to expand, close fists to shrink!
+          </div>
         </div>
       </div>
     </main>
@@ -407,7 +444,6 @@ function App() {
         <p className="classroom-description">
           Learn astronomy through interactive lessons, quizzes, and educational resources.
         </p>
-        
         <div className="classroom-grid">
           {[
             { title: '📚 Lesson 1: Introduction to Astronomy', desc: 'Learn the basics of astronomical observation' },
@@ -447,7 +483,6 @@ function App() {
             AI-Powered Astronomical Image Analysis
           </p>
         </div>
-
         <nav className="nav-menu">
           {[
             { id: 'home', label: 'Home', icon: '🏠' },
@@ -465,9 +500,7 @@ function App() {
           ))}
         </nav>
       </header>
-
       {renderContent()}
-
       {error && (
         <div className="error-notification">
           <span>{error}</span>

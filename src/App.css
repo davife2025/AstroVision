@@ -534,3 +534,80 @@
   border: none;
   box-shadow: 0 0 10px rgba(126, 34, 206, 0.6);
 }
+
+
+/* Hand Tracking Styles */
+.hand-video-overlay {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 200px;
+  height: 150px;
+  border: 2px solid #9f7aea;
+  border-radius: 8px;
+  z-index: 10;
+  transform: scaleX(-1); /* Mirror the video */
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.hand-status {
+  margin: 20px 0;
+  text-align: center;
+}
+
+.hand-tracking-toggle {
+  padding: 15px 30px;
+  font-size: 16px;
+  font-weight: bold;
+  background: rgba(126, 34, 206, 0.3);
+  border: 2px solid rgba(126, 34, 206, 0.5);
+  border-radius: 12px;
+  color: #e2e8f0;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.hand-tracking-toggle:hover {
+  background: rgba(126, 34, 206, 0.5);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(126, 34, 206, 0.4);
+}
+
+.hand-tracking-toggle.active {
+  background: rgba(126, 34, 206, 0.6);
+  border-color: #9f7aea;
+  box-shadow: 0 0 20px rgba(126, 34, 206, 0.6);
+}
+
+.hand-info {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  margin-top: 15px;
+  font-size: 14px;
+  color: #cbd5e0;
+}
+
+.hand-info span {
+  padding: 8px 16px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  border: 1px solid rgba(126, 34, 206, 0.3);
+}
+
+.hand-info span.active {
+  color: #9f7aea;
+  border-color: #9f7aea;
+  font-weight: bold;
+}
+
+.control-hint {
+  margin-top: 15px;
+  padding: 12px;
+  background: rgba(126, 34, 206, 0.1);
+  border-radius: 8px;
+  border: 1px solid rgba(126, 34, 206, 0.3);
+  color: #cbd5e0;
+  font-size: 14px;
+  text-align: center;
+}

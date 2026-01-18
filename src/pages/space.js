@@ -3,6 +3,7 @@ import * as THREE from 'three';
 
 let scene, camera, renderer, particles, geometry, material;
 let animationId;
+let hands, videoElement, cameraInstance;
 
 const params = {
     color: '#00ffcc',
@@ -43,6 +44,8 @@ export function createParticles(template = 'heart') {
 
     particles = new THREE.Points(geometry, material);
     scene.add(particles);
+    
+    params.template = template;
 }
 
 export function generatePoints(type) {
@@ -110,9 +113,14 @@ function animate() {
     }
 }
 
-export function updateVisuals(scale = 1.0) {
+export function updateVisuals(scale = 1.0, expansion = 1.0) {
     if (particles) {
-        particles.scale.setScalar(scale);
+        // Scale controls overall size (hand closure)
+        const finalScale = Math.max(0.3, Math.min(2.5, scale));
+        particles.scale.setScalar(finalScale);
+        
+        // Expansion could control rotation speed
+        particles.rotation.y += expansion * 0.01;
     }
 }
 
@@ -138,7 +146,107 @@ export function handleResize(container) {
     }
 }
 
+// Initialize Hand Tracking
+export async function initHandTracking(videoElementId, onHandsDetected) {
+    try {
+        const { Hands } = await import('@mediapipe/hands');
+        const { Camera } = await import('@mediapipe/camera_utils');
+
+        videoElement = document.getElementById(videoElementId);
+        
+        hands = new Hands({
+            locateFile: (file) => {
+                return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+            }
+        });
+
+        hands.setOptions({
+            maxNumHands: 2,
+            modelComplexity: 1,
+            minDetectionConfidence: 0.5,
+            minTrackingConfidence: 0.5
+        });
+
+        hands.onResults((results) => {
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length === 2) {
+                const hand1 = results.multiHandLandmarks[0];
+                const hand2 = results.multiHandLandmarks[1];
+
+                // 1. Expansion: Distance between palms
+                const dx = hand1[0].x - hand2[0].x;
+                const dy = hand1[0].y - hand2[0].y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                params.expansion = distance * 5;
+
+                // 2. Scale: Finger curl (hand closure)
+                let totalCurl = 0;
+                [hand1, hand2].forEach(h => {
+                    const palm = h[0];
+                    const tips = [h[8], h[12], h[16], h[20]]; // Index, Middle, Ring, Pinky
+                    tips.forEach(t => {
+                        totalCurl += Math.hypot(t.x - palm.x, t.y - palm.y);
+                    });
+                });
+                // Normalize: Open hands = higher value, Closed fists = lower value
+                params.scale = Math.max(0.5, Math.min(2.5, (totalCurl / 8) * 3));
+
+                // Update visuals with hand data
+                updateVisuals(params.scale, params.expansion);
+
+                // Callback for UI updates
+                if (onHandsDetected) {
+                    onHandsDetected({
+                        scale: params.scale,
+                        expansion: params.expansion,
+                        handCount: 2
+                    });
+                }
+            } else if (results.multiHandLandmarks && results.multiHandLandmarks.length === 1) {
+                // One hand - just rotate
+                if (onHandsDetected) {
+                    onHandsDetected({
+                        handCount: 1
+                    });
+                }
+            } else {
+                // No hands detected
+                if (onHandsDetected) {
+                    onHandsDetected({
+                        handCount: 0
+                    });
+                }
+            }
+        });
+
+        cameraInstance = new Camera(videoElement, {
+            onFrame: async () => {
+                await hands.send({ image: videoElement });
+            },
+            width: 640,
+            height: 480
+        });
+
+        await cameraInstance.start();
+        console.log('✅ Hand tracking initialized');
+        return true;
+    } catch (error) {
+        console.error('❌ Hand tracking failed:', error);
+        return false;
+    }
+}
+
+export function stopHandTracking() {
+    if (cameraInstance) {
+        cameraInstance.stop();
+    }
+    if (hands) {
+        hands.close();
+    }
+}
+
 export function cleanup() {
+    stopHandTracking();
+    
     if (animationId) {
         cancelAnimationFrame(animationId);
     }
