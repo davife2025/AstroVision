@@ -149,10 +149,43 @@ export function handleResize(container) {
 // Initialize Hand Tracking
 export async function initHandTracking(videoElementId, onHandsDetected) {
     try {
+        console.log('🎥 Initializing hand tracking...');
+        console.log('Looking for video element:', videoElementId);
+        
+        // Wait for video element to be in DOM (retry mechanism)
+        let retries = 0;
+        const maxRetries = 10;
+        
+        while (retries < maxRetries) {
+            videoElement = document.getElementById(videoElementId);
+            if (videoElement) {
+                console.log('✅ Video element found after', retries, 'retries');
+                break;
+            }
+            console.log(`Retry ${retries + 1}/${maxRetries}...`);
+            await new Promise(resolve => setTimeout(resolve, 100));
+            retries++;
+        }
+        
+        if (!videoElement) {
+            console.error('❌ Video element not found in DOM after retries');
+            console.log('Available video elements:', document.querySelectorAll('video'));
+            console.log('All elements with id:', document.querySelector('#hand-video'));
+            throw new Error(`Video element with id "${videoElementId}" not found after ${maxRetries} retries`);
+        }
+        
+        console.log('✅ Video element ready:', videoElement);
+        
+        // Request camera permission explicitly first
+        console.log('📷 Requesting camera permission...');
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        stream.getTracks().forEach(track => track.stop()); // Stop it, MediaPipe will request again
+        console.log('✅ Camera permission granted');
+        
         const { Hands } = await import('@mediapipe/hands');
         const { Camera } = await import('@mediapipe/camera_utils');
-
-        videoElement = document.getElementById(videoElementId);
+        
+        console.log('📦 MediaPipe libraries loaded');
         
         hands = new Hands({
             locateFile: (file) => {
@@ -218,6 +251,7 @@ export async function initHandTracking(videoElementId, onHandsDetected) {
             }
         });
 
+        console.log('🎬 Starting camera...');
         cameraInstance = new Camera(videoElement, {
             onFrame: async () => {
                 await hands.send({ image: videoElement });
@@ -227,20 +261,40 @@ export async function initHandTracking(videoElementId, onHandsDetected) {
         });
 
         await cameraInstance.start();
-        console.log('✅ Hand tracking initialized');
+        console.log('✅ Hand tracking initialized successfully');
         return true;
     } catch (error) {
         console.error('❌ Hand tracking failed:', error);
+        console.error('Error name:', error.name);
+        console.error('Error message:', error.message);
         return false;
     }
 }
 
 export function stopHandTracking() {
-    if (cameraInstance) {
-        cameraInstance.stop();
+    try {
+        if (cameraInstance) {
+            cameraInstance.stop();
+            cameraInstance = null;
+        }
+    } catch (error) {
+        console.warn('Error stopping camera:', error);
     }
-    if (hands) {
-        hands.close();
+    
+    try {
+        if (hands) {
+            hands.close();
+            hands = null;
+        }
+    } catch (error) {
+        console.warn('Error closing hands:', error);
+    }
+    
+    // Stop video stream
+    if (videoElement && videoElement.srcObject) {
+        const tracks = videoElement.srcObject.getTracks();
+        tracks.forEach(track => track.stop());
+        videoElement.srcObject = null;
     }
 }
 

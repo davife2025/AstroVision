@@ -355,15 +355,17 @@ function App() {
           ref={spaceContainerRef}
           className="space-canvas"
         >
-          {/* Hand tracking video overlay */}
-          {handTrackingEnabled && (
-            <video 
-              id="hand-video" 
-              autoPlay 
-              playsInline
-              className="hand-video-overlay"
-            />
-          )}
+          {/* Hand tracking video - ALWAYS rendered, just hidden when not in use */}
+          <video 
+            id="hand-video" 
+            autoPlay 
+            playsInline
+            muted
+            width="640"
+            height="480"
+            className="hand-video-overlay"
+            style={{ display: handTrackingEnabled ? 'block' : 'none' }}
+          />
         </div>
 
         {/* Hand Tracking Status */}
