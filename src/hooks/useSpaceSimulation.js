@@ -38,6 +38,25 @@ export const useSpaceSimulation = (isActive, handTrackingEnabled, onAutoScan) =>
     };
   }, [isActive]);
 
+  const handleAutoScan = useCallback((base64) => {
+    if (isProcessingScan.current) return;
+
+    if (debounceTimeout.current) {
+      clearTimeout(debounceTimeout.current);
+    }
+
+    debounceTimeout.current = setTimeout(async () => {
+      isProcessingScan.current = true;
+      try {
+        await onAutoScan(base64);
+      } catch (e) {
+        console.error('Auto-scan error:', e);
+      } finally {
+        isProcessingScan.current = false;
+      }
+    }, DEBOUNCE_DELAY);
+  }, [onAutoScan]);
+
   // Auto-scan functionality
   useEffect(() => {
     if (!isActive || !handTrackingEnabled || !threeReady.current || !onAutoScan) {
@@ -53,28 +72,7 @@ export const useSpaceSimulation = (isActive, handTrackingEnabled, onAutoScan) =>
     }, AUTO_SCAN_INTERVAL);
 
     return () => clearInterval(autoScanInterval);
-  }, [isActive, handTrackingEnabled, onAutoScan]);
-
-  const handleAutoScan = useCallback((base64) => {
-    if (isProcessingScan.current) return;
-
-    // Clear previous timeout
-    if (debounceTimeout.current) {
-      clearTimeout(debounceTimeout.current);
-    }
-
-    // Debounce by configured delay
-    debounceTimeout.current = setTimeout(async () => {
-      isProcessingScan.current = true;
-      try {
-        await onAutoScan(base64);
-      } catch (e) {
-        console.error('Auto-scan error:', e);
-      } finally {
-        isProcessingScan.current = false;
-      }
-    }, DEBOUNCE_DELAY);
-  }, [onAutoScan]);
+  }, [isActive, handTrackingEnabled, onAutoScan, handleAutoScan]); // ✅ FIX
 
   const changeShape = useCallback((shape) => {
     if (!threeReady.current) return;
