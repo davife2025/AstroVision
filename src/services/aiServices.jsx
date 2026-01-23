@@ -1,6 +1,6 @@
 // src/services/aiService.js
 
-import { API_ENDPOINTS, AI_MODELS, ERROR_MESSAGES } from '../utils/constants';
+import { API_ENDPOINTS, ERROR_MESSAGES } from '../utils/constants';
 import { retryFetch, parseAIResponse } from '../utils/helpers';
 
 /**
