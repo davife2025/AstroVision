@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 
 const API_URL = 'http://localhost:3001/api';
 
@@ -12,11 +12,7 @@ function Profile({ profileUserId, onClose }) {
   const currentUserId = useRef(localStorage.getItem('userId') || 'user-' + Math.random().toString(36).substr(2, 9));
   const isOwnProfile = profileUserId === currentUserId.current;
 
-  useEffect(() => {
-    loadProfile();
-  }, [profileUserId]);
-
-  const loadProfile = async () => {
+  const loadProfile = useCallback(async () => {
     try {
       setLoading(true);
       const response = await fetch(`${API_URL}/users/${profileUserId}`);
@@ -30,7 +26,11 @@ function Profile({ profileUserId, onClose }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [profileUserId]);
+
+  useEffect(() => {
+    loadProfile();
+  }, [loadProfile]);
 
   const handleSaveProfile = async () => {
     try {
