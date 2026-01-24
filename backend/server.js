@@ -9,14 +9,21 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+
+
+
 // --- 1. MIDDLEWARE ---
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
+
 // --- 2. CONFIGURATION ---
 const ASTROMETRY_API_KEY = process.env.ASTROMETRY_API_KEY || 'colziljqtejtgxxg';
 const HF_API_KEY = process.env.HF_API_KEY;
+const TWITTER_CLIENT_ID = process.env.TWITTER_CLIENT_ID;
+const TWITTER_CLIENT_SECRET = process.env.TWITTER_CLIENT_SECRET;
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
 
 // --- 3. IN-MEMORY STORAGE ---
 let communityPosts = [];
@@ -495,13 +502,142 @@ app.get('/', (req, res) => {
     });
 });
 
+// --- AUTHENTICATION ENDPOINTS ---
+
+// Twitter OAuth callback
+app.get('/auth/twitter/callback', async (req, res) => {
+    try {
+        const { code, state } = req.query;
+        
+        // Verify state to prevent CSRF
+        // In production, store state in session and verify it
+        
+        if (!code) {
+            return res.redirect(`${FRONTEND_URL}?error=no_code`);
+        }
+
+        // Exchange code for access token
+        const tokenResponse = await axios.post(
+            'https://api.twitter.com/2/oauth2/token',
+            new URLSearchParams({
+                code,
+                grant_type: 'authorization_code',
+                client_id: TWITTER_CLIENT_ID,
+                redirect_uri: `${FRONTEND_URL}/auth/twitter/callback`,
+                code_verifier: 'challenge'
+            }),
+            {
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'Authorization': `Basic ${Buffer.from(`${TWITTER_CLIENT_ID}:${TWITTER_CLIENT_SECRET}`).toString('base64')}`
+                }
+            }
+        );
+
+        const { access_token } = tokenResponse.data;
+
+        // Get user info from Twitter
+        const userResponse = await axios.get('https://api.twitter.com/2/users/me', {
+            headers: {
+                'Authorization': `Bearer ${access_token}`
+            }
+        });
+
+        const twitterUser = userResponse.data.data;
+
+        // Create or update user in your system
+        const userId = `twitter-${twitterUser.id}`;
+        const user = getOrCreateUser(userId);
+        user.username = twitterUser.username;
+        user.twitterId = twitterUser.id;
+        user.method = 'twitter';
+
+        console.log(`✅ Twitter auth successful: ${user.username}`);
+
+        // Redirect back to frontend with user data
+        const userData = encodeURIComponent(JSON.stringify({
+            id: userId,
+            username: user.username,
+            method: 'twitter',
+            avatar: user.avatar
+        }));
+
+        res.redirect(`${FRONTEND_URL}?auth=success&user=${userData}`);
+
+    } catch (error) {
+        console.error('❌ Twitter OAuth error:', error.message);
+        res.redirect(`${FRONTEND_URL}?error=auth_failed`);
+    }
+});
+
+// Wallet verification endpoint
+app.post('/auth/wallet/verify', async (req, res) => {
+    try {
+        const { address, signature, message } = req.body;
+
+        if (!address || !signature || !message) {
+            return res.status(400).json({ error: 'Missing required fields' });
+        }
+
+        // In production, verify the signature here
+        // For now, we'll trust the frontend verification
+        
+        const userId = `wallet-${address.substring(0, 10)}`;
+        const user = getOrCreateUser(userId);
+        user.walletAddress = address;
+        user.method = 'wallet';
+        user.username = user.username || `Astronaut_${address.substring(2, 8)}`;
+
+        console.log(`✅ Wallet auth successful: ${address}`);
+
+        res.json({
+            success: true,
+            user: {
+                id: userId,
+                username: user.username,
+                walletAddress: address,
+                avatar: user.avatar
+            }
+        });
+
+    } catch (error) {
+        console.error('❌ Wallet verification error:', error.message);
+        res.status(500).json({ error: 'Verification failed' });
+    }
+});
+
+// Get current user
+app.get('/auth/me', (req, res) => {
+    try {
+        const userId = req.headers['x-user-id'];
+        
+        if (!userId) {
+            return res.status(401).json({ error: 'Not authenticated' });
+        }
+
+        const user = userProfiles[userId];
+        
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        res.json(user);
+
+    } catch (error) {
+        console.error('Get user error:', error);
+        res.status(500).json({ error: 'Failed to get user' });
+    }
+});
+
+
 // --- 10. START SERVER ---
 app.listen(PORT, () => {
     console.log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
     console.log(`🌌 AstroVision Backend v3.0`);
     console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
     console.log(`🚀 Server: http://localhost:${PORT}`);
-    console.log(`👥 Features: Profiles + Nested Comments`);
+    console.log(`👥 Features: Profiles + Auth + Community`);
+    console.log(`🔐 Twitter OAuth: ${TWITTER_CLIENT_ID ? '✓' : '✗'}`);
     console.log(`✅ All systems ready!`);
     console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
 });

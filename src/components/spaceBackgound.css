@@ -1,0 +1,353 @@
+/* Add to App.css - SPACE EARTH BACKGROUND */
+
+/* === ANIMATED SPACE BACKGROUND === */
+.space-background {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  overflow: hidden;
+  background: #000;
+}
+
+.earth-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: 
+    radial-gradient(ellipse at 20% 50%, rgba(0, 100, 255, 0.1) 0%, transparent 0%),
+    radial-gradient(ellipse at 80% 50%, rgba(100, 200, 255, 0.1) 0%, transparent 0%),
+    url('/my-app/public/guillermo-ferla-Oze6U2m1oYU-unsplash.jpg') no-repeat center center;
+  background-size: cover;
+  animation: earthRotate 60s linear infinite;
+  background-position: center;
+}
+
+/* Alternative: Use NASA images */
+.earth-nasa {
+  background-image: url('/my-app/public/ivana-cajina-asuyh-_ZX54-unsplash.jpg');
+  background-size: cover;
+  background-position: center;
+}
+
+/* Animated stars layer */
+.stars-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: 
+    radial-gradient(2px 2px at 20px 30px, white, transparent),
+    radial-gradient(2px 2px at 60px 70px, white, transparent),
+    radial-gradient(1px 1px at 50px 50px, white, transparent),
+    radial-gradient(1px 1px at 130px 80px, white, transparent),
+    radial-gradient(2px 2px at 90px 10px, white, transparent);
+  background-repeat: repeat;
+  background-size: 200px 200px;
+  animation: starsMove 100s linear infinite;
+  opacity: 0.3;
+}
+
+/* Orbital paths */
+.orbital-path {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 60%;
+  height: 60%;
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  animation: orbitRotate 30s linear infinite;
+}
+
+.orbital-path::before,
+.orbital-path::after {
+  content: '';
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: rgba(129, 140, 248, 0.8);
+  border-radius: 50%;
+  box-shadow: 0 0 10px rgba(129, 140, 248, 0.8);
+}
+
+.orbital-path::before {
+  top: 50%;
+  left: 0;
+  transform: translateY(-50%);
+}
+
+.orbital-path::after {
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* Light rays from Earth */
+.light-rays {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: 
+    linear-gradient(45deg, transparent 48%, rgba(129, 140, 248, 0.1) 50%, transparent 52%),
+    linear-gradient(-45deg, transparent 48%, rgba(129, 140, 248, 0.05) 50%, transparent 52%);
+  animation: raysMove 20s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* Atmospheric glow */
+.atmospheric-glow {
+  position: absolute;
+  top: 10%;
+  left: 10%;
+  width: 40%;
+  height: 40%;
+  background: radial-gradient(circle, rgba(0, 150, 255, 0.3) 0%, transparent 70%);
+  filter: blur(50px);
+  animation: glowPulse 8s ease-in-out infinite;
+}
+
+/* Grid overlay */
+.grid-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: 
+    linear-gradient(rgba(129, 140, 248, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(129, 140, 248, 0.05) 1px, transparent 1px);
+  background-size: 50px 50px;
+  opacity: 0.3;
+  animation: gridMove 30s linear infinite;
+}
+
+/* Floating particles */
+.particle {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 50%;
+  box-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
+}
+
+/* Animated scan lines */
+.scan-lines {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.1) 0px,
+    transparent 1px,
+    transparent 2px,
+    rgba(0, 0, 0, 0.1) 3px
+  );
+  pointer-events: none;
+  opacity: 0.3;
+}
+
+/* === ANIMATIONS === */
+@keyframes earthRotate {
+  0% { transform: scale(1.1) translateX(0); }
+  50% { transform: scale(1.15) translateX(-20px); }
+  100% { transform: scale(1.1) translateX(0); }
+}
+
+@keyframes starsMove {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-200px); }
+}
+
+@keyframes orbitRotate {
+  0% { transform: translate(-50%, -50%) rotate(0deg); }
+  100% { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+@keyframes raysMove {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.6; }
+}
+
+@keyframes glowPulse {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.1); }
+}
+
+@keyframes gridMove {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(50px); }
+}
+
+/* === UI OVERLAY STYLES === */
+.ui-panel {
+  background: rgba(10, 14, 26, 0.85);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(129, 140, 248, 0.3);
+  border-radius: 16px;
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+.ui-panel::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(45deg, transparent, rgba(129, 140, 248, 0.05), transparent);
+  animation: panelShine 3s infinite;
+}
+
+@keyframes panelShine {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* Circular indicators (like in the image) */
+.circular-indicator {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(0, 0, 0, 0.8) 60%, transparent);
+  border: 2px solid rgba(129, 140, 248, 0.3);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 30px rgba(129, 140, 248, 0.2);
+}
+
+.circular-indicator svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.circular-indicator circle {
+  fill: none;
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+
+.circular-indicator .bg-circle {
+  stroke: rgba(129, 140, 248, 0.1);
+}
+
+.circular-indicator .progress-circle {
+  stroke: #818cf8;
+  stroke-dasharray: 377;
+  stroke-dashoffset: 94; /* 75% progress */
+  filter: drop-shadow(0 0 10px rgba(129, 140, 248, 0.8));
+  animation: circleProgress 2s ease-in-out;
+}
+
+@keyframes circleProgress {
+  0% { stroke-dashoffset: 377; }
+  100% { stroke-dashoffset: 94; }
+}
+
+.indicator-label {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.indicator-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: #818cf8;
+  text-shadow: 0 0 10px rgba(129, 140, 248, 0.5);
+}
+
+/* Holographic effect */
+.holographic {
+  position: relative;
+  background: linear-gradient(
+    135deg,
+    rgba(129, 140, 248, 0.1) 0%,
+    rgba(192, 132, 252, 0.1) 50%,
+    rgba(129, 140, 248, 0.1) 100%
+  );
+  border: 1px solid rgba(129, 140, 248, 0.3);
+}
+
+.holographic::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    45deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.1) 50%,
+    transparent 70%
+  );
+  transform: rotate(45deg);
+  animation: holographicScan 3s infinite;
+}
+
+@keyframes holographicScan {
+  0% { transform: translateX(-100%) rotate(45deg); }
+  100% { transform: translateX(100%) rotate(45deg); }
+}
+
+/* Planet info cards */
+.planet-card {
+  background: rgba(10, 14, 26, 0.9);
+  backdrop-filter: blur(15px);
+  border: 1px solid rgba(129, 140, 248, 0.2);
+  border-radius: 12px;
+  padding: 16px;
+  transition: all 0.3s ease;
+}
+
+.planet-card:hover {
+  border-color: rgba(129, 140, 248, 0.6);
+  transform: translateY(-5px);
+  box-shadow: 0 10px 40px rgba(129, 140, 248, 0.3);
+}
+
+/* Apply to entire app */
+body.space-theme {
+  background: #000;
+  color: #e2e8f0;
+}
+
+.App.space-theme {
+  position: relative;
+}
+
+.App.space-theme::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: 
+    radial-gradient(ellipse at 20% 50%, rgba(129, 140, 248, 0.1) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 50%, rgba(192, 132, 252, 0.1) 0%, transparent 50%);
+  z-index: -1;
+  pointer-events: none;
+}

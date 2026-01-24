@@ -27,7 +27,7 @@ const ResponseCard = ({ item, index }) => {
 
       {item.coords && (
         <div className="coords-info">
-          📍 {formatCoordinates(item.coords)}
+           {formatCoordinates(item.coords)}
         </div>
       )}
 

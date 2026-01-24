@@ -21,19 +21,20 @@ const ObservationTab = ({ responses, loading, loadingStage }) => {
 
       {responses.length === 0 && !loading && (
         <div className="empty-state">
-          <h2>🌌 Welcome to AstroVision</h2>
+            <br></br><br></br><br></br>
+          <h2>Welcome to AstroVision</h2>
           <p>Ready for input. Upload astronomical data, chat with AstroSage, or use Space Lab Auto-Scan.</p>
           <div className="features-list">
             <div className="feature-item">
-              <span className="icon">🔭</span>
+              <span className="icon"></span>
               <span>Upload space images for analysis</span>
             </div>
             <div className="feature-item">
-              <span className="icon">🤖</span>
+              <span className="icon"></span>
               <span>Chat with AI about astrophysics</span>
             </div>
             <div className="feature-item">
-              <span className="icon">🎯</span>
+              <span className="icon"></span>
               <span>Auto-detect celestial objects</span>
             </div>
           </div>

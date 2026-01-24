@@ -1,4 +1,4 @@
-// src/App.jsx - MOBILE RESPONSIVE VERSION
+// src/App.jsx - FULLY FIXED VERSION
 
 import React, { useState, useRef } from 'react';
 import './App.css';
@@ -8,6 +8,9 @@ import ObservationTab from './components/observationTab';
 import SpaceSimulation from './components/spaceSimulation';
 import InputArea from './components/InputArea';
 import Profile from './pages/profile';
+import SignIn from './pages/signin';
+import DAO from './pages/dao';
+import SpaceBackground from './components/spaceBackground';
 
 // Services
 import { runDiscoveryAnalysis, chatWithAstroSage } from './services/aiServices';
@@ -21,8 +24,6 @@ import { useSpaceSimulation } from './hooks/useSpaceSimulation';
 import { cleanAIResponse } from './utils/helpers';
 import { ERROR_MESSAGES } from './utils/constants';
 
-import DAO from './pages/dao';
-
 function App() {
   const [activeTab, setActiveTab] = useState('home');
   const [loading, setLoading] = useState(false);
@@ -30,15 +31,15 @@ function App() {
   const [error, setError] = useState('');
   const [prompt, setPrompt] = useState('');
   const [responses, setResponses] = useState([]);
-
-  // Image States
   const [selectedImage, setSelectedImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
-
-  // Menu & Profile States
   const [showMenu, setShowMenu] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [viewingUserId, setViewingUserId] = useState(null);
+  const [showSignIn, setShowSignIn] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [authChecked, setAuthChecked] = useState(false);
 
   const fileInputRef = useRef(null);
   const userId = useRef(localStorage.getItem('userId') || 'user-' + Math.random().toString(36).substr(2, 9));
@@ -47,25 +48,45 @@ function App() {
     localStorage.setItem('userId', userId.current);
   }, []);
 
-  // Custom Hooks
-  const {
-    handTrackingEnabled,
-    handStatus,
-    toggleHandTracking,
-  } = useHandTracking();
+  React.useEffect(() => {
+    const authData = localStorage.getItem('userAuth');
+    if (authData) {
+      try {
+        const user = JSON.parse(authData);
+        setCurrentUser(user);
+        setIsAuthenticated(true);
+        setShowSignIn(false);
+      } catch (err) {
+        console.error('Auth parse error:', err);
+      }
+    }
+    setAuthChecked(true);
+  }, []);
+
+  const { handTrackingEnabled, handStatus, toggleHandTracking } = useHandTracking();
 
   const handleAutoScan = async (base64) => {
     await handleDiscoveryPipeline(base64, 'Auto-scan captured a new object.');
   };
 
-  const {
-    selectedShape,
-    changeShape,
-    updateSimulationFromAI,
-    shapes,
-  } = useSpaceSimulation(activeTab === 'space', handTrackingEnabled, handleAutoScan);
+  const { selectedShape, changeShape, updateSimulationFromAI, shapes } = useSpaceSimulation(activeTab === 'space', handTrackingEnabled, handleAutoScan);
 
-  // --- PROFILE HANDLERS ---
+  const handleSignIn = (user) => {
+    setCurrentUser(user);
+    setIsAuthenticated(true);
+    setShowSignIn(false);
+  };
+
+  const handleSignOut = () => {
+    if (window.confirm('Are you sure you want to sign out?')) {
+      localStorage.removeItem('userAuth');
+      setCurrentUser(null);
+      setIsAuthenticated(false);
+      setShowSignIn(true);
+      setActiveTab('home');
+      setShowMenu(false);
+    }
+  };
 
   const openProfile = (profileUserId) => {
     setViewingUserId(profileUserId || userId.current);
@@ -78,7 +99,10 @@ function App() {
     setViewingUserId(null);
   };
 
-  // --- MAIN HANDLERS ---
+  const handleTabChange = (tabId) => {
+    setActiveTab(tabId);
+    setShowMenu(false);
+  };
 
   const handleImageSelect = (file) => {
     const validation = validateImageFile(file);
@@ -86,7 +110,6 @@ function App() {
       setError(validation.error);
       return;
     }
-
     setSelectedImage(file);
     setImagePreview(createPreviewURL(file));
   };
@@ -115,11 +138,7 @@ function App() {
       }
     } catch (err) {
       console.error('Analysis error:', err);
-      setError(
-        err.message.includes('503')
-          ? ERROR_MESSAGES.MODEL_LOADING
-          : `Error: ${err.message}`
-      );
+      setError(err.message.includes('503') ? ERROR_MESSAGES.MODEL_LOADING : `Error: ${err.message}`);
     } finally {
       setLoading(false);
       setLoadingStage('');
@@ -130,293 +149,131 @@ function App() {
   };
 
   const handleDiscoveryPipeline = async (base64, userQuestion) => {
-    const { visualId, discoveryData, aiText } = await runDiscoveryAnalysis(
-      base64,
-      userQuestion,
-      setLoadingStage
-    );
-
+    const { visualId, discoveryData, aiText } = await runDiscoveryAnalysis(base64, userQuestion, setLoadingStage);
     const cleanedResponse = cleanAIResponse(aiText);
     updateSimulationFromAI(aiText, discoveryData.type);
 
-    setResponses((prev) => [
-      {
-        prompt: userQuestion,
-        response: cleanedResponse,
-        image: `data:image/jpeg;base64,${base64}`,
-        nasaImage: discoveryData.historicalImage,
-        vlmId: visualId,
-        coords: discoveryData.coords,
-      },
-      ...prev,
-    ]);
+    setResponses((prev) => [{
+      prompt: userQuestion,
+      response: cleanedResponse,
+      image: `data:image/jpeg;base64,${base64}`,
+      nasaImage: discoveryData.historicalImage,
+      vlmId: visualId,
+      coords: discoveryData.coords,
+    }, ...prev]);
   };
 
   const handleChatOnly = async (text) => {
     setLoadingStage('Thinking...');
     const aiText = await chatWithAstroSage(text);
     updateSimulationFromAI(aiText, 'GALAXY');
-
-    setResponses((prev) => [
-      { prompt: text, response: aiText },
-      ...prev,
-    ]);
+    setResponses((prev) => [{ prompt: text, response: aiText }, ...prev]);
   };
+
+  if (!authChecked) {
+    return (
+      <div className="App" style={{display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: 'linear-gradient(135deg, #0f0c29, #302b63, #24243e)'}}>
+        <div style={{ textAlign: 'center', color: '#818cf8' }}>
+          <div className="spinner" style={{width: '50px', height: '50px', border: '4px solid rgba(129, 140, 248, 0.1)', borderTop: '4px solid #818cf8', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 20px'}}></div>
+          <p>Loading AstroVision...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated && showSignIn) {
+    return (
+      <div className="App">
+        <SignIn onClose={() => {}} onSignIn={handleSignIn} />
+      </div>
+    );
+  }
 
   return (
     <div className="App">
+        <SpaceBackground/>
       <header className="app-header">
-        <div className="header-top" style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '0 20px',
-          flexWrap: 'wrap'
-        }}>
-          
-          
-          <nav className="nav-menu" style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '10px',
-            flexWrap: 'wrap'
-          }}>
-            {/* Menu Button - Left side of nav buttons */}
-            <div style={{ position: 'relative', order: -1 }}>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowMenu(!showMenu);
-                }}
-                className="nav-button"
-                style={{
-                  background: showMenu ? 'rgba(0,255,204,0.2)' : 'transparent',
-                  borderRadius: '50%',
-                  width: '40px',
-                  height: '40px',
-                  padding: 0,
-                  fontSize: '20px',
-                  position: 'relative',
-                  zIndex: 1001
-                }}
-                aria-label="Menu"
-              >
-                ☰
-              </button>
-              
-              {/* Click outside overlay - BEFORE menu */}
-              {showMenu && (
-                <div
-                  onClick={() => setShowMenu(false)}
-                  style={{
-                    position: 'fixed',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    zIndex: 999
-                  }}
-                />
-              )}
-              
-              {/* Dropdown Menu */}
-              {showMenu && (
-                <div style={{
-                  position: 'fixed',
-                  top: '70px',
-                  left: '10px',
-                  background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
-                  border: '1px solid rgba(0,255,204,0.3)',
-                  borderRadius: '12px',
-                  minWidth: '220px',
-                  maxWidth: 'calc(100vw - 20px)',
-                  boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
-                  overflow: 'hidden',
-                  zIndex: 1002,
-                  pointerEvents: 'auto'
-                }}>
-                  {/* My Profile */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      openProfile();
-                      setShowMenu(false);
-                    }}
-                    style={{
-                      width: '100%',
-                      padding: '15px 20px',
-                      background: 'transparent',
-                      border: 'none',
-                      color: '#fff',
-                      textAlign: 'left',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '10px',
-                      pointerEvents: 'auto'
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0,255,204,0.1)'}
-                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                  >
-                    👤 My Profile
-                  </button>
+        <div className="header-top">
+          <div className="nav-menu">
+            <button
+              onClick={() => setShowMenu(!showMenu)}
+              className="nav-button menu-button"
+              aria-label="Menu"
+            >
+              ☰
+            </button>
+<br></br><br></br>
+            <h1 className="header-title"> AstroVision</h1>
 
-                  <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '0 10px' }} />
-
-                  {/* Navigation Items */}
-                  {[
-                    { id: 'home', label: '🏠 Observation' },
-                    { id: 'space', label: '🚀 Space Simulation' },
-                    { id: 'avdao', label: '🌐 Community' },
-                    { id: 'playground', label: '🎮 Playground' },
-                    { id: 'mars', label: '🔴 Mars' }
-                  ].map(tab => (
-                    <button
-                      key={tab.id}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        console.log('Clicked:', tab.label); // DEBUG LOG
-                        setActiveTab(tab.id);
-                        setShowMenu(false);
-                      }}
-                      style={{
-                        width: '100%',
-                        padding: '15px 20px',
-                        background: activeTab === tab.id ? 'rgba(0,255,204,0.1)' : 'transparent',
-                        border: 'none',
-                        color: '#fff',
-                        textAlign: 'left',
-                        cursor: 'pointer',
-                        fontSize: '14px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '10px',
-                        pointerEvents: 'auto'
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0,255,204,0.1)'}
-                      onMouseLeave={(e) => e.currentTarget.style.background = activeTab === tab.id ? 'rgba(0,255,204,0.1)' : 'transparent'}
-                    >
-                      {tab.label}
-                    </button>
-                  ))}
-
-                  <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '0 10px' }} />
-
-                  {/* Settings */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowMenu(false);
-                    }}
-                    style={{
-                      width: '100%',
-                      padding: '15px 20px',
-                      background: 'transparent',
-                      border: 'none',
-                      color: '#fff',
-                      textAlign: 'left',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '10px',
-                      pointerEvents: 'auto'
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0,255,204,0.1)'}
-                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                  >
-                    ⚙️ Settings
-                  </button>
-                </div>
-              )}
-            </div>
-<h1 className="header-title" style={{
-            fontSize: 'clamp(1.2rem, 4vw, 2rem)',
-            margin: '10px 0'
-          }}>
-            🌟 AstroVision
-          </h1>
-            {/* Desktop Navigation Buttons - Hidden on mobile */}
-            <style>{`
-              @media (max-width: 768px) {
-                .nav-button:not([aria-label="Menu"]) {
-                  display: none !important;
-                }
-              }
-            `}</style>
-            
-            <button
-              onClick={() => setActiveTab('home')}
-              className={`nav-button ${activeTab === 'home' ? 'active' : ''}`}
-            >
-              🏠 Observation
-            </button>
-            <button
-              onClick={() => setActiveTab('space')}
-              className={`nav-button ${activeTab === 'space' ? 'active' : ''}`}
-            >
-              🚀 Space Simulation
-            </button>
-            <button
-              onClick={() => setActiveTab('avdao')}
-              className={`nav-button ${activeTab === 'avdao' ? 'active' : ''}`}
-            >
-              🌐 Community
-            </button>
-            <button
-              onClick={() => setActiveTab('playground')}
-              className={`nav-button ${activeTab === 'playground' ? 'active' : ''}`}
-            >
-              🎮 Playground
-            </button>
-            <button
-              onClick={() => setActiveTab('mars')}
-              className={`nav-button ${activeTab === 'mars' ? 'active' : ''}`}
-            >
-              🔴 Mars
-            </button>
-          </nav>
+            <button onClick={() => setActiveTab('home')} className={`nav-button desktop-nav-btn ${activeTab === 'home' ? 'active' : ''}`}> Observation</button>
+            <button onClick={() => setActiveTab('avdao')} className={`nav-button desktop-nav-btn ${activeTab === 'avdao' ? 'active' : ''}`}> Community</button>
+            <button onClick={() => setActiveTab('space')} className={`nav-button desktop-nav-btn ${activeTab === 'space' ? 'active' : ''}`}> Space Lab</button>
+            <button onClick={() => setActiveTab('playground')} className={`nav-button desktop-nav-btn ${activeTab === 'playground' ? 'active' : ''}`}> Playground</button>
+            <button onClick={() => setActiveTab('mars')} className={`nav-button desktop-nav-btn ${activeTab === 'mars' ? 'active' : ''}`}> Mars</button>
+          </div>
         </div>
       </header>
 
-      {/* Tab Content */}
-      {activeTab === 'home' && (
-        <ObservationTab
-          responses={responses}
-          loading={loading}
-          loadingStage={loadingStage}
-        />
+      {showMenu && (
+        <>
+          <div 
+            onClick={() => setShowMenu(false)}
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'rgba(0,0,0,0.5)',
+              zIndex: 9998
+            }}
+          />
+          <div className="dropdown-menu">
+            {isAuthenticated && currentUser && (
+              <>
+                <div className="menu-user">
+                  <button
+                    onClick={() => openProfile()}
+                    className="menu-item"
+                  >
+                    <img src={currentUser.avatar} alt="avatar" />
+                    <span>{currentUser.username}</span>
+                  </button>
+                </div>
+                <div className="menu-divider" />
+              </>
+            )}
+
+            <button onClick={() => handleTabChange('home')} className={`menu-item ${activeTab === 'home' ? 'active' : ''}`}>
+              <span></span> Observation
+            </button>
+            <button onClick={() => handleTabChange('avdao')} className={`menu-item ${activeTab === 'avdao' ? 'active' : ''}`}>
+              <span></span> Community
+            </button>
+            <button onClick={() => handleTabChange('space')} className={`menu-item ${activeTab === 'space' ? 'active' : ''}`}>
+              <span></span> Space Lab
+            </button>
+            <button onClick={() => handleTabChange('playground')} className={`menu-item ${activeTab === 'playground' ? 'active' : ''}`}>
+              <span></span> Playground
+            </button>
+            <button onClick={() => handleTabChange('mars')} className={`menu-item ${activeTab === 'mars' ? 'active' : ''}`}>
+              <span></span> Mars
+            </button>
+
+            {isAuthenticated && (
+              <>
+                <div className="menu-divider" />
+                <button onClick={handleSignOut} className="menu-item danger">
+                  <span></span> Sign Out
+                </button>
+              </>
+            )}
+          </div>
+        </>
       )}
 
-      {activeTab === 'space' && (
-        <SpaceSimulation
-          handTrackingEnabled={handTrackingEnabled}
-          handStatus={handStatus}
-          onToggleHandTracking={toggleHandTracking}
-          selectedShape={selectedShape}
-          shapes={shapes}
-          onShapeChange={changeShape}
-          loading={loading}
-          loadingStage={loadingStage}
-        />
-      )}
-
-      {activeTab === 'avdao' && <DAO onViewProfile={openProfile} />}
-
-      {activeTab === 'playground' && (
-        <div className="main-content">
-          <h2>🎮 Playground - Coming Soon</h2>
-        </div>
-      )}
-
-      {activeTab === 'mars' && (
-        <div className="main-content">
-          <h2>🔴 Mars - Coming Soon</h2>
-        </div>
-      )}
-
-      {/* Input Area (only on home tab) */}
+      {activeTab === 'home' && <ObservationTab responses={responses} loading={loading} loadingStage={loadingStage} />}
+      
       {activeTab === 'home' && (
         <InputArea
           prompt={prompt}
@@ -429,49 +286,20 @@ function App() {
           fileInputRef={fileInputRef}
         />
       )}
+      {activeTab === 'space' && <SpaceSimulation handTrackingEnabled={handTrackingEnabled} handStatus={handStatus} onToggleHandTracking={toggleHandTracking} selectedShape={selectedShape} shapes={shapes} onShapeChange={changeShape} loading={loading} loadingStage={loadingStage} />}
+      {activeTab === 'avdao' && <DAO onViewProfile={openProfile} />}
+      {activeTab === 'playground' && <div className="main-content" style={{display: 'flex', alignItems: 'center', justifyContent: 'center'}}><h2 style={{color: '#818cf8'}}>Playground - Coming Soon</h2></div>}
+      {activeTab === 'mars' && <div className="main-content" style={{display: 'flex', alignItems: 'center', justifyContent: 'center'}}><h2 style={{color: '#ff3366'}}> Mars - Coming Soon</h2></div>}
 
-      {/* Error Notification */}
+
       {error && (
-        <div className="error-notification" style={{
-          position: 'fixed',
-          bottom: '20px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          padding: '15px 20px',
-          background: '#ff4444',
-          color: '#fff',
-          borderRadius: '8px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '10px',
-          zIndex: 2000,
-          maxWidth: 'calc(100vw - 40px)',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
-        }}>
+        <div className="error-notification">
           {error}
-          <button 
-            onClick={() => setError('')}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: '#fff',
-              fontSize: '20px',
-              cursor: 'pointer',
-              padding: '0 5px'
-            }}
-          >
-            ×
-          </button>
+          <button onClick={() => setError('')}>×</button>
         </div>
       )}
 
-      {/* Profile Modal */}
-      {showProfile && (
-        <Profile
-          profileUserId={viewingUserId}
-          onClose={closeProfile}
-        />
-      )}
+      {showProfile && <Profile profileUserId={viewingUserId} onClose={closeProfile} />}
     </div>
   );
 }
