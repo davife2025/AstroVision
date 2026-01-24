@@ -273,8 +273,12 @@ function App() {
       )}
 
       {activeTab === 'home' && <ObservationTab responses={responses} loading={loading} loadingStage={loadingStage} />}
-      
-      {activeTab === 'home' && (
+      {activeTab === 'space' && <SpaceSimulation handTrackingEnabled={handTrackingEnabled} handStatus={handStatus} onToggleHandTracking={toggleHandTracking} selectedShape={selectedShape} shapes={shapes} onShapeChange={changeShape} loading={loading} loadingStage={loadingStage} />}
+      {activeTab === 'avdao' && <DAO onViewProfile={openProfile} />}
+      {activeTab === 'playground' && <div className="main-content" style={{display: 'flex', alignItems: 'center', justifyContent: 'center'}}><h2 style={{color: '#818cf8'}}>Playground - Coming Soon</h2></div>}
+      {activeTab === 'mars' && <div className="main-content" style={{display: 'flex', alignItems: 'center', justifyContent: 'center'}}><h2 style={{color: '#ff3366'}}> Mars - Coming Soon</h2></div>}
+
+   {activeTab === 'home' && (
         <InputArea
           prompt={prompt}
           setPrompt={setPrompt}
@@ -286,12 +290,6 @@ function App() {
           fileInputRef={fileInputRef}
         />
       )}
-      {activeTab === 'space' && <SpaceSimulation handTrackingEnabled={handTrackingEnabled} handStatus={handStatus} onToggleHandTracking={toggleHandTracking} selectedShape={selectedShape} shapes={shapes} onShapeChange={changeShape} loading={loading} loadingStage={loadingStage} />}
-      {activeTab === 'avdao' && <DAO onViewProfile={openProfile} />}
-      {activeTab === 'playground' && <div className="main-content" style={{display: 'flex', alignItems: 'center', justifyContent: 'center'}}><h2 style={{color: '#818cf8'}}>Playground - Coming Soon</h2></div>}
-      {activeTab === 'mars' && <div className="main-content" style={{display: 'flex', alignItems: 'center', justifyContent: 'center'}}><h2 style={{color: '#ff3366'}}> Mars - Coming Soon</h2></div>}
-
-
       {error && (
         <div className="error-notification">
           {error}

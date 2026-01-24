@@ -218,6 +218,7 @@ body {
 
 .main-content.home {
   background: radial-gradient(circle at top right, rgba(129, 140, 248, 0.05) 0%, transparent 50%);
+  margin-bottom: 0;
 }
 
 .main-content.space {
@@ -310,6 +311,8 @@ body {
   text-align: center;
   padding: 60px 20px;
   color: var(--text-dim);
+  margin-top:   20%;
+  margin-bottom: 0px;
 }
 
 .empty-state h2 {
@@ -320,30 +323,42 @@ body {
   -webkit-text-fill-color: transparent;
 }
 
-/* === INPUT AREA === */
+/* === INPUT AREA - FIXED VERSION === */
+/* === INPUT AREA - FIXED VERSION === */
 .input-area {
-  padding: 24px 30px;
+  position: sticky;
+  bottom: 0;
+  left: 0;
+  right: 0;
   background: rgba(10, 14, 26, 0.98);
   backdrop-filter: blur(20px);
   border-top: 1px solid var(--glass-border);
-  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.2);
-  padding-bottom: 0%;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
+  padding: 20px;
+  z-index: 50;
+  width: 100%;
+  margin: 0;
 }
 
 .image-preview-container {
   margin-bottom: 16px;
   position: relative;
-  display: inline-block;
+  display: inline-flex;
   border-radius: 12px;
   overflow: hidden;
   border: 2px solid var(--primary);
+  background: rgba(0, 0, 0, 0.3);
+  max-width: 100%;
 }
 
 .image-preview-container img {
   max-width: 200px;
   max-height: 200px;
+  width: auto;
+  height: auto;
   display: block;
   border-radius: 10px;
+  object-fit: contain;
 }
 
 .image-preview-container button {
@@ -362,6 +377,7 @@ body {
   align-items: center;
   justify-content: center;
   transition: all 0.2s;
+  z-index: 10;
 }
 
 .image-preview-container button:hover {
@@ -375,7 +391,7 @@ body {
   max-width: 1200px;
   margin: 0 auto;
   align-items: flex-end;
-  padding-bottom: 0%;
+  width: 100%;
 }
 
 .prompt-textarea {
@@ -391,6 +407,7 @@ body {
   min-height: 50px;
   max-height: 150px;
   transition: all 0.3s ease;
+  line-height: 1.5;
 }
 
 .prompt-textarea:focus {
@@ -401,7 +418,7 @@ body {
 }
 
 .prompt-textarea::placeholder {
-  color: var(--text-dim);
+  color: rgba(255, 255, 255, 0.4);
 }
 
 .upload-button,
@@ -420,7 +437,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding-bottom: 0%;
+  gap: 8px;
+  white-space: nowrap;
 }
 
 .upload-button:hover,
@@ -439,6 +457,315 @@ body {
   opacity: 0.5;
   cursor: not-allowed;
   transform: none;
+  box-shadow: none;
+}
+
+/* === MOBILE RESPONSIVE === */
+@media (max-width: 768px) {
+  .input-area {
+    padding: 15px 10px;
+  }
+
+  .input-controls {
+    flex-direction: column;
+    gap: 10px;
+    align-items: stretch;
+  }
+
+  .prompt-textarea {
+    min-height: 60px;
+    font-size: 14px;
+    padding: 12px 16px;
+  }
+
+  .upload-button,
+  .submit-button {
+    width: 100%;
+    justify-content: center;
+    min-height: 48px;
+    font-size: 14px;
+    padding: 12px 20px;
+  }
+
+  .image-preview-container {
+    max-width: 100%;
+  }
+
+  .image-preview-container img {
+    max-width: 100%;
+    max-height: 150px;
+  }
+}
+
+@media (max-width: 480px) {
+  .input-area {
+    padding: 12px 8px;
+  }
+
+  .input-controls {
+    gap: 8px;
+  }
+
+  .prompt-textarea {
+    min-height: 50px;
+    font-size: 13px;
+    padding: 10px 14px;
+  }
+
+  .upload-button,
+  .submit-button {
+    min-height: 44px;
+    font-size: 13px;
+    padding: 10px 16px;
+  }
+
+  .image-preview-container img {
+    max-height: 120px;
+  }
+}
+
+/* === TABLET === */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .input-controls {
+    max-width: 90%;
+  }
+}
+
+/* === LARGE DESKTOP === */
+@media (min-width: 1400px) {
+  .input-controls {
+    max-width: 1400px;
+  }
+}
+
+/* === SAFE AREA SUPPORT (iOS notch) === */
+@supports (padding: max(0px)) {
+  .input-area {
+    padding-bottom: max(20px, env(safe-area-inset-bottom));
+    padding-left: max(20px, env(safe-area-inset-left));
+    padding-right: max(20px, env(safe-area-inset-right));
+  }
+
+  @media (max-width: 768px) {
+    .input-area {
+      padding-bottom: max(15px, env(safe-area-inset-bottom));
+      padding-left: max(10px, env(safe-area-inset-left));
+      padding-right: max(10px, env(safe-area-inset-right));
+    }
+  }
+}
+
+/* === LOADING STATE === */
+.input-area.loading .prompt-textarea,
+.input-area.loading .upload-button {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.submit-button.loading {
+  position: relative;
+  color: transparent;
+}
+
+.submit-button.loading::after {
+  content: '';
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* === ACCESSIBILITY === */
+.prompt-textarea:focus-visible,
+.upload-button:focus-visible,
+.submit-button:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .input-area {
+    border-top: 2px solid var(--primary);
+  }
+
+  .prompt-textarea {
+    border: 2px solid var(--glass-border);
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .upload-button,
+  .submit-button,
+  .prompt-textarea {
+    transition: none;
+  }
+
+  .submit-button.loading::after {
+    animation: none;
+  }
+}
+
+/* === MOBILE RESPONSIVE === */
+@media (max-width: 768px) {
+  .input-area {
+    padding: 15px 10px;
+  }
+
+  .input-controls {
+    flex-direction: column;
+    gap: 10px;
+    align-items: stretch;
+  }
+
+  .prompt-textarea {
+    min-height: 60px;
+    font-size: 14px;
+    padding: 12px 16px;
+  }
+
+  .upload-button,
+  .submit-button {
+    width: 100%;
+    justify-content: center;
+    min-height: 48px;
+    font-size: 14px;
+    padding: 12px 20px;
+  }
+
+  .image-preview-container {
+    max-width: 100%;
+  }
+
+  .image-preview-container img {
+    max-width: 100%;
+    max-height: 150px;
+  }
+}
+
+@media (max-width: 480px) {
+  .input-area {
+    padding: 12px 8px;
+  }
+
+  .input-controls {
+    gap: 8px;
+  }
+
+  .prompt-textarea {
+    min-height: 50px;
+    font-size: 13px;
+    padding: 10px 14px;
+  }
+
+  .upload-button,
+  .submit-button {
+    min-height: 44px;
+    font-size: 13px;
+    padding: 10px 16px;
+  }
+
+  .image-preview-container img {
+    max-height: 120px;
+  }
+}
+
+/* === TABLET === */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .input-controls {
+    max-width: 90%;
+  }
+}
+
+/* === LARGE DESKTOP === */
+@media (min-width: 1400px) {
+  .input-controls {
+    max-width: 1400px;
+  }
+}
+
+/* === SAFE AREA SUPPORT (iOS notch) === */
+@supports (padding: max(0px)) {
+  .input-area {
+    padding-bottom: max(20px, env(safe-area-inset-bottom));
+    padding-left: max(20px, env(safe-area-inset-left));
+    padding-right: max(20px, env(safe-area-inset-right));
+  }
+
+  @media (max-width: 768px) {
+    .input-area {
+      padding-bottom: max(15px, env(safe-area-inset-bottom));
+      padding-left: max(10px, env(safe-area-inset-left));
+      padding-right: max(10px, env(safe-area-inset-right));
+    }
+  }
+}
+
+/* === LOADING STATE === */
+.input-area.loading .prompt-textarea,
+.input-area.loading .upload-button {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.submit-button.loading {
+  position: relative;
+  color: transparent;
+}
+
+.submit-button.loading::after {
+  content: '';
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* === ACCESSIBILITY === */
+.prompt-textarea:focus-visible,
+.upload-button:focus-visible,
+.submit-button:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .input-area {
+    border-top: 2px solid var(--primary);
+  }
+
+  .prompt-textarea {
+    border: 2px solid var(--glass-border);
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .upload-button,
+  .submit-button,
+  .prompt-textarea {
+    transition: none;
+  }
+
+  .submit-button.loading::after {
+    animation: none;
+  }
 }
 
 /* === SPACE SIMULATION === */
