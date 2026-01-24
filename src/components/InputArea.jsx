@@ -56,7 +56,7 @@ const InputArea = ({
           aria-label="Upload image"
           disabled={loading}
         >
-          📷
+          add document
         </button>
 
         <textarea
@@ -75,7 +75,7 @@ const InputArea = ({
           disabled={loading || (!prompt.trim() && !imagePreview)}
           aria-label="Submit"
         >
-          {loading ? '⏳' : '🚀'}
+          {loading ? 'loading..' : 'send'}
         </button>
       </div>
     </div>

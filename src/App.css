@@ -311,7 +311,7 @@ body {
   text-align: center;
   padding: 60px 20px;
   color: var(--text-dim);
-  margin-top:   20%;
+  margin-top:   40%;
   margin-bottom: 0px;
 }
 
@@ -338,6 +338,7 @@ body {
   z-index: 50;
   width: 100%;
   margin: 0;
+  margin-bottom: 80px;
 }
 
 .image-preview-container {
