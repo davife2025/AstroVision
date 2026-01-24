@@ -129,7 +129,6 @@ function Profile({ profileUserId, onClose }) {
         boxShadow: '0 20px 60px rgba(0,255,204,0.2)',
         position: 'relative'
       }}>
-        {/* Close Button */}
         {onClose && (
           <button
             onClick={onClose}
@@ -154,7 +153,6 @@ function Profile({ profileUserId, onClose }) {
           </button>
         )}
 
-        {/* Avatar */}
         <div style={{ textAlign: 'center', marginBottom: '30px' }}>
           <img
             src={profile.avatar}
@@ -169,7 +167,6 @@ function Profile({ profileUserId, onClose }) {
           />
         </div>
 
-        {/* Username */}
         {isEditing ? (
           <input
             type="text"
@@ -199,7 +196,6 @@ function Profile({ profileUserId, onClose }) {
           </h2>
         )}
 
-        {/* Bio */}
         {isEditing ? (
           <textarea
             value={editForm.bio}
@@ -230,7 +226,6 @@ function Profile({ profileUserId, onClose }) {
           </p>
         )}
 
-        {/* Stats */}
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(3, 1fr)',
@@ -281,7 +276,6 @@ function Profile({ profileUserId, onClose }) {
           </div>
         </div>
 
-        {/* Join Date */}
         <p style={{
           textAlign: 'center',
           fontSize: '14px',
@@ -291,7 +285,6 @@ function Profile({ profileUserId, onClose }) {
           Member since {new Date(profile.joinDate).toLocaleDateString()}
         </p>
 
-        {/* Error Message */}
         {error && (
           <p style={{
             color: '#ff4444',
@@ -303,7 +296,6 @@ function Profile({ profileUserId, onClose }) {
           </p>
         )}
 
-        {/* Edit/Save Buttons (only for own profile) */}
         {isOwnProfile && (
           <div style={{ display: 'flex', gap: '10px' }}>
             {isEditing ? (

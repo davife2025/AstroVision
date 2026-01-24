@@ -173,12 +173,7 @@ function App() {
           padding: '0 20px',
           flexWrap: 'wrap'
         }}>
-          <h1 className="header-title" style={{
-            fontSize: 'clamp(1.2rem, 4vw, 2rem)',
-            margin: '10px 0'
-          }}>
-            🌟 AstroVision
-          </h1>
+          
           
           <nav className="nav-menu" style={{ 
             display: 'flex', 
@@ -336,7 +331,12 @@ function App() {
                 </div>
               )}
             </div>
-
+<h1 className="header-title" style={{
+            fontSize: 'clamp(1.2rem, 4vw, 2rem)',
+            margin: '10px 0'
+          }}>
+            🌟 AstroVision
+          </h1>
             {/* Desktop Navigation Buttons - Hidden on mobile */}
             <style>{`
               @media (max-width: 768px) {
