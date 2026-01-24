@@ -59,7 +59,7 @@ function SignIn({ onClose, onSignIn }) {
     window.location.href = authUrl;
   };
 
-  const connectWallet = async () => {
+ /* const connectWallet = async () => {
     setIsConnecting(true);
     setError('');
 
@@ -104,6 +104,17 @@ function SignIn({ onClose, onSignIn }) {
       setIsConnecting(false);
     }
   };
+
+
+
+
+
+
+  
+
+
+
+  */
 
   const continueAsGuest = () => {
     const guestUser = {
@@ -184,7 +195,7 @@ function SignIn({ onClose, onSignIn }) {
             color: '#00ffcc',
             marginBottom: '10px'
           }}>
-            🌟 Welcome to AstroVision
+             Welcome to AstroVision
           </h2>
           <p style={{
             color: 'rgba(255,255,255,0.7)',
@@ -240,42 +251,6 @@ function SignIn({ onClose, onSignIn }) {
             </svg>
             {isConnecting ? 'Connecting...' : 'Continue with Twitter'}
           </button>
-
-          {/* Wallet Connect */}
-          <button
-            onClick={connectWallet}
-            disabled={isConnecting}
-            style={{
-              width: '100%',
-              padding: '16px',
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              border: 'none',
-              borderRadius: '12px',
-              color: '#fff',
-              fontSize: '16px',
-              fontWeight: 'bold',
-              cursor: isConnecting ? 'not-allowed' : 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '10px',
-              transition: 'all 0.3s',
-              opacity: isConnecting ? 0.6 : 1
-            }}
-            onMouseEnter={(e) => !isConnecting && (e.target.style.transform = 'scale(1.02)')}
-            onMouseLeave={(e) => !isConnecting && (e.target.style.transform = 'scale(1)')}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <rect x="3" y="7" width="18" height="12" rx="2"/>
-              <path d="M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2"/>
-              <circle cx="12" cy="13" r="1"/>
-            </svg>
-            {walletAddress 
-              ? `Connected: ${walletAddress.substring(0, 6)}...${walletAddress.substring(38)}`
-              : isConnecting ? 'Connecting...' : 'Connect Crypto Wallet'
-            }
-          </button>
-
           {/* Divider */}
           <div style={{
             display: 'flex',
@@ -326,3 +301,9 @@ function SignIn({ onClose, onSignIn }) {
 }
 
 export default SignIn;
+
+
+
+
+
+/* */

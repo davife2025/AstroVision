@@ -25,7 +25,7 @@ body {
 .App {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: 80vh;
   overflow: hidden;
 }
 
@@ -192,6 +192,7 @@ body {
 
 /* === MAIN CONTENT === */
 .main-content {
+ padding: 50px 0px 0px 0px;
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
@@ -218,6 +219,7 @@ body {
 
 .main-content.home {
   background: radial-gradient(circle at top right, rgba(129, 140, 248, 0.05) 0%, transparent 50%);
+  padding-top: 30px;
   margin-bottom: 0;
 }
 
@@ -228,7 +230,8 @@ body {
 
 /* === RESPONSE CARDS === */
 .response-card {
-  margin-bottom: 30px;
+  margin-top: 30px;
+  margin-bottom: 10px;
   padding: 24px;
   background: var(--bg-card);
   backdrop-filter: blur(20px);
@@ -311,7 +314,7 @@ body {
   text-align: center;
   padding: 60px 20px;
   color: var(--text-dim);
-  margin-top:   40%;
+  margin-top:   10%;
   margin-bottom: 0px;
 }
 
@@ -338,7 +341,7 @@ body {
   z-index: 50;
   width: 100%;
   margin: 0;
-  margin-bottom: 80px;
+  margin-bottom: 0px;
 }
 
 .image-preview-container {
@@ -915,7 +918,7 @@ body {
   cursor: pointer;
   padding: 0;
   width: 28px;
-  height: 28px;
+  height: 5px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1254,7 +1257,7 @@ button {
   -webkit-backdrop-filter: blur(10px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   padding: 15px 20px;
-  position: sticky;
+  position:-webkit-sticky;
   top: 0;
   z-index: 1000;
 }
@@ -1780,4 +1783,20 @@ button.active,
   font-weight: 600;
   text-shadow: 0 0 15px rgba(255, 255, 255, 0.4),
                0 2px 10px rgba(0, 0, 0, 0.9);
+}
+
+
+
+/* Transparent Space Background */
+.main-content.space {
+    background: transparent !important;
+    padding: 0;
+}
+
+#space-canvas-container {
+    background: transparent !important;
+}
+
+#space-canvas-container canvas {
+    background: transparent !important;
 }

@@ -269,7 +269,7 @@ function DAO({ onViewProfile }) {
                 fontSize: '12px'
               }}
             >
-              💬 Reply
+               Reply
             </button>
           </div>
           
@@ -328,7 +328,7 @@ function DAO({ onViewProfile }) {
     <main className="main-content dao">
       <div className="dao-container" style={{ maxWidth: '800px', margin: '0 auto', padding: '20px' }}>
         <h2 className="dao-title" style={{ textAlign: 'center', marginBottom: '10px' }}>
-          🌐 Community Discovery Board
+           Community 
         </h2>
         <p style={{ textAlign: 'center', marginBottom: '30px', opacity: 0.8 }}>
           Share your astronomical discoveries with the community
@@ -341,7 +341,7 @@ function DAO({ onViewProfile }) {
           borderRadius: '12px',
           marginBottom: '30px'
         }}>
-          <h3 style={{ marginBottom: '15px' }}>📝 Share Discovery</h3>
+          <h3 style={{ marginBottom: '15px' }}> Share Discovery</h3>
           
           {daoImagePreview && (
             <div style={{ marginBottom: '15px', position: 'relative' }}>
@@ -423,7 +423,7 @@ function DAO({ onViewProfile }) {
                 opacity: loading ? 0.5 : 1
               }}
             >
-              📷 Add Image
+               Add Image
             </button>
             <button
               onClick={createCommunityPost}
@@ -440,7 +440,7 @@ function DAO({ onViewProfile }) {
                 flex: 1
               }}
             >
-              {loading ? '⏳ Posting...' : '🚀 Post Discovery'}
+              {loading ? ' Posting...' : 'Post Discovery'}
             </button>
           </div>
 
