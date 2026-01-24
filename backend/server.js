@@ -16,13 +16,42 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // --- 2. CONFIGURATION ---
 const ASTROMETRY_API_KEY = process.env.ASTROMETRY_API_KEY || 'colziljqtejtgxxg';
-const HF_API_KEY = process.env.HF_API_KEY; // FIXED: Removed REACT_APP_ prefix
+const HF_API_KEY = process.env.HF_API_KEY;
 
-// --- 3. SCIENTIFIC HELPERS ---
+// --- 3. IN-MEMORY STORAGE ---
+let communityPosts = [];
+let userProfiles = {}; // { userId: { username, bio, avatar, joinDate, postsCount, likesReceived } }
 
-/**
- * Polls Astrometry.net for result calibration
- */
+// --- 4. HELPER FUNCTIONS ---
+
+function getOrCreateUser(userId) {
+    if (!userProfiles[userId]) {
+        userProfiles[userId] = {
+            userId: userId,
+            username: 'Astronomer_' + Math.random().toString(36).substr(2, 5),
+            bio: 'Exploring the cosmos 🌌',
+            avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${userId}`,
+            joinDate: Date.now(),
+            postsCount: 0,
+            commentsCount: 0,
+            likesReceived: 0,
+            discoveries: []
+        };
+    }
+    return userProfiles[userId];
+}
+
+function countNestedComments(comments) {
+    if (!comments || comments.length === 0) return 0;
+    let count = comments.length;
+    comments.forEach(comment => {
+        count += countNestedComments(comment.replies);
+    });
+    return count;
+}
+
+// --- 5. SCIENTIFIC HELPERS (keeping existing functions) ---
+
 async function getCalibrationResults(subId) {
     const statusUrl = `http://nova.astrometry.net/api/submissions/${subId}`;
     for (let i = 0; i < 20; i++) {
@@ -38,20 +67,15 @@ async function getCalibrationResults(subId) {
     throw new Error("Astrometry solving timed out.");
 }
 
-/**
- * Compares User Image with NASA Image using Pixelmatch
- */
 async function performChangeDetection(userBuffer, nasaUrl) {
     try {
         const [userImg, nasaImg] = await Promise.all([
             Jimp.read(userBuffer),
             Jimp.read(nasaUrl)
         ]);
-
         userImg.resize(500, 500).greyscale();
         nasaImg.resize(500, 500).greyscale();
-
-        const diffBuffer = Buffer.alloc(500, 500 * 4);
+        const diffBuffer = Buffer.alloc(500 * 500 * 4);
         const numDiffPixels = pixelmatch(
             userImg.bitmap.data,
             nasaImg.bitmap.data,
@@ -66,83 +90,344 @@ async function performChangeDetection(userBuffer, nasaUrl) {
     }
 }
 
-// --- 4. API ROUTES ---
+// --- 6. USER PROFILE ENDPOINTS ---
 
-// A. Chat Route (AstroSage Reasoning)
-// A. Chat Route (AstroSage Reasoning)
-// A. Chat Route (AstroSage Reasoning)
+// GET user profile
+app.get('/api/users/:userId', (req, res) => {
+    try {
+        const { userId } = req.params;
+        const user = getOrCreateUser(userId);
+        
+        // Calculate stats
+        const userPosts = communityPosts.filter(p => p.userId === userId);
+        user.postsCount = userPosts.length;
+        
+        res.json(user);
+    } catch (error) {
+        console.error('Error fetching user:', error);
+        res.status(500).json({ error: 'Failed to fetch user' });
+    }
+});
+
+// UPDATE user profile
+app.put('/api/users/:userId', (req, res) => {
+    try {
+        const { userId } = req.params;
+        const { username, bio, avatar } = req.body;
+        
+        const user = getOrCreateUser(userId);
+        
+        if (username) user.username = username;
+        if (bio !== undefined) user.bio = bio;
+        if (avatar) user.avatar = avatar;
+        
+        console.log(`✅ User profile updated: ${userId}`);
+        res.json(user);
+    } catch (error) {
+        console.error('Profile update error:', error);
+        res.status(500).json({ error: 'Failed to update profile' });
+    }
+});
+
+// GET all users (for discovery)
+app.get('/api/users', (req, res) => {
+    try {
+        const users = Object.values(userProfiles);
+        res.json(users);
+    } catch (error) {
+        console.error('Error fetching users:', error);
+        res.status(500).json({ error: 'Failed to fetch users' });
+    }
+});
+
+// --- 7. DAO/COMMUNITY ENDPOINTS ---
+
+// GET all posts
+app.get('/api/posts', (req, res) => {
+    try {
+        const sortedPosts = [...communityPosts].sort((a, b) => b.timestamp - a.timestamp);
+        console.log(`📋 Fetched ${sortedPosts.length} posts`);
+        res.json(sortedPosts);
+    } catch (error) {
+        console.error('Error fetching posts:', error);
+        res.status(500).json({ error: 'Failed to fetch posts' });
+    }
+});
+
+// CREATE new post
+app.post('/api/posts', (req, res) => {
+    try {
+        console.log('📝 Creating new post...');
+        const { text, image, userId } = req.body;
+        
+        if (!text && !image) {
+            return res.status(400).json({ error: 'Text or image required' });
+        }
+        
+        if (!userId) {
+            return res.status(400).json({ error: 'User ID required' });
+        }
+
+        const user = getOrCreateUser(userId);
+
+        const newPost = {
+            id: `post-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            text: text || '',
+            image: image || null,
+            likes: 0,
+            likedBy: [],
+            comments: [],
+            userId: userId,
+            author: user.username,
+            authorAvatar: user.avatar,
+            timestamp: Date.now(),
+            timeString: new Date().toLocaleString()
+        };
+
+        communityPosts.unshift(newPost);
+        user.postsCount++;
+        
+        console.log(`✅ Post created: ${newPost.id} by ${user.username}`);
+        res.json(newPost);
+    } catch (error) {
+        console.error('Post creation error:', error);
+        res.status(500).json({ error: 'Failed to create post' });
+    }
+});
+
+// LIKE/UNLIKE post
+app.post('/api/posts/:id/like', (req, res) => {
+    try {
+        const { id } = req.params;
+        const { userId } = req.body;
+
+        if (!userId) {
+            return res.status(400).json({ error: 'userId required' });
+        }
+
+        const post = communityPosts.find(p => p.id === id);
+        
+        if (!post) {
+            return res.status(404).json({ error: 'Post not found' });
+        }
+
+        const alreadyLiked = post.likedBy.includes(userId);
+
+        if (alreadyLiked) {
+            post.likes = Math.max(0, post.likes - 1);
+            post.likedBy = post.likedBy.filter(u => u !== userId);
+            console.log(`👎 Post ${id} unliked by ${userId}`);
+        } else {
+            post.likes++;
+            post.likedBy.push(userId);
+            console.log(`👍 Post ${id} liked by ${userId}`);
+        }
+
+        res.json(post);
+    } catch (error) {
+        console.error('Like error:', error);
+        res.status(500).json({ error: 'Failed to update like' });
+    }
+});
+
+// GET comments for a post
+app.get('/api/posts/:postId/comments', (req, res) => {
+    try {
+        const { postId } = req.params;
+        const post = communityPosts.find(p => p.id === postId);
+        
+        if (!post) {
+            return res.status(404).json({ error: 'Post not found' });
+        }
+        
+        const comments = post.comments || [];
+        console.log(`📋 Fetched ${comments.length} comments for post ${postId}`);
+        res.json(comments.sort((a, b) => b.timestamp - a.timestamp));
+    } catch (error) {
+        console.error('Error fetching comments:', error);
+        res.status(500).json({ error: 'Failed to fetch comments' });
+    }
+});
+
+// Helper function to add comment to nested structure
+function addCommentToThread(comments, parentId, newComment) {
+    if (!parentId) {
+        comments.unshift(newComment);
+        return true;
+    }
+    
+    for (let comment of comments) {
+        if (comment.id === parentId) {
+            if (!comment.replies) comment.replies = [];
+            comment.replies.unshift(newComment);
+            return true;
+        }
+        if (comment.replies && addCommentToThread(comment.replies, parentId, newComment)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// CREATE comment on post (supports nested comments)
+app.post('/api/posts/:postId/comments', (req, res) => {
+    try {
+        const { postId } = req.params;
+        const { text, userId, parentId } = req.body; // parentId for nested replies
+        
+        if (!text || !text.trim()) {
+            return res.status(400).json({ error: 'Comment text required' });
+        }
+        
+        if (!userId) {
+            return res.status(400).json({ error: 'User ID required' });
+        }
+
+        const post = communityPosts.find(p => p.id === postId);
+        
+        if (!post) {
+            return res.status(404).json({ error: 'Post not found' });
+        }
+
+        if (!post.comments) {
+            post.comments = [];
+        }
+
+        const user = getOrCreateUser(userId);
+
+        const newComment = {
+            id: `comment-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            postId: postId,
+            parentId: parentId || null,
+            text: text.trim(),
+            userId: userId,
+            author: user.username,
+            authorAvatar: user.avatar,
+            likes: 0,
+            likedBy: [],
+            replies: [],
+            timestamp: Date.now(),
+            timeString: new Date().toLocaleString()
+        };
+
+        if (parentId) {
+            // Add as nested reply
+            addCommentToThread(post.comments, parentId, newComment);
+        } else {
+            // Add as top-level comment
+            post.comments.unshift(newComment);
+        }
+
+        user.commentsCount++;
+        console.log(`✅ Comment created on post ${postId}: ${newComment.id}`);
+        res.json(newComment);
+    } catch (error) {
+        console.error('Comment creation error:', error);
+        res.status(500).json({ error: 'Failed to create comment' });
+    }
+});
+
+// Helper function to find and update comment in nested structure
+function findAndUpdateComment(comments, commentId, updateFn) {
+    for (let comment of comments) {
+        if (comment.id === commentId) {
+            updateFn(comment);
+            return comment;
+        }
+        if (comment.replies) {
+            const found = findAndUpdateComment(comment.replies, commentId, updateFn);
+            if (found) return found;
+        }
+    }
+    return null;
+}
+
+// LIKE/UNLIKE comment (works with nested comments)
+app.post('/api/posts/:postId/comments/:commentId/like', (req, res) => {
+    try {
+        const { postId, commentId } = req.params;
+        const { userId } = req.body;
+
+        if (!userId) {
+            return res.status(400).json({ error: 'userId required' });
+        }
+
+        const post = communityPosts.find(p => p.id === postId);
+        
+        if (!post) {
+            return res.status(404).json({ error: 'Post not found' });
+        }
+
+        const comment = findAndUpdateComment(post.comments, commentId, (c) => {
+            const alreadyLiked = c.likedBy.includes(userId);
+            if (alreadyLiked) {
+                c.likes = Math.max(0, c.likes - 1);
+                c.likedBy = c.likedBy.filter(u => u !== userId);
+            } else {
+                c.likes++;
+                c.likedBy.push(userId);
+            }
+        });
+
+        if (!comment) {
+            return res.status(404).json({ error: 'Comment not found' });
+        }
+
+        res.json(comment);
+    } catch (error) {
+        console.error('Comment like error:', error);
+        res.status(500).json({ error: 'Failed to update comment like' });
+    }
+});
+
+// DELETE post
+app.delete('/api/posts/:id', (req, res) => {
+    try {
+        const { id } = req.params;
+        const initialLength = communityPosts.length;
+        communityPosts = communityPosts.filter(p => p.id !== id);
+        
+        if (communityPosts.length < initialLength) {
+            console.log(`🗑️  Post deleted: ${id}`);
+            res.json({ success: true, message: 'Post deleted' });
+        } else {
+            res.status(404).json({ error: 'Post not found' });
+        }
+    } catch (error) {
+        console.error('Delete error:', error);
+        res.status(500).json({ error: 'Failed to delete post' });
+    }
+});
+
+// --- 8. AI ENDPOINTS (keeping existing) ---
+
 app.post('/api/chat', async (req, res) => {
     console.log("🤖 Chat request received");
     const { prompt } = req.body;
     
-    // MOCK RESPONSE if no API key
     if (!HF_API_KEY) {
-        console.log("⚠️ No HF_API_KEY - using mock response");
-        const mockText = `Mock response for: "${prompt}". To get real AI answers, add HF_API_KEY to your .env file. [TRIGGER:GALAXY]`;
-        
         return res.json({
-            choices: [{
-                text: mockText,
-                finish_reason: 'stop',
-                index: 0
-            }]
+            choices: [{ text: `Mock response for: "${prompt}" [TRIGGER:GALAXY]`, finish_reason: 'stop' }]
         });
     }
     
-    // REAL AI RESPONSE with API key
     try {
-        console.log("🤖 Calling real AstroSage AI...");
         const response = await axios.post(
             'https://api-inference.huggingface.co/models/AstroMLab/AstroSage-8B',
-            { 
-                inputs: prompt, 
-                parameters: { 
-                    max_new_tokens: 300, 
-                    return_full_text: false,
-                    temperature: 0.7,
-                    top_p: 0.9
-                } 
-            },
+            { inputs: prompt, parameters: { max_new_tokens: 300, return_full_text: false, temperature: 0.7, top_p: 0.9 } },
             { headers: { Authorization: `Bearer ${HF_API_KEY}` } }
         );
         
-        const text = Array.isArray(response.data) 
-            ? response.data[0]?.generated_text 
-            : response.data.generated_text;
-        
-        console.log("✅ Real AI response received");
-        
-        return res.json({
-            choices: [{
-                text: String(text || "No response").trim(),
-                finish_reason: 'stop',
-                index: 0
-            }]
-        });
+        const text = Array.isArray(response.data) ? response.data[0]?.generated_text : response.data.generated_text;
+        return res.json({ choices: [{ text: String(text || "No response").trim(), finish_reason: 'stop' }] });
     } catch (e) {
-        console.error("❌ AI Error:", e.response?.data || e.message);
-        
-        // Fallback to mock if AI fails
-        return res.json({
-            choices: [{
-                text: `AI service temporarily unavailable. Mock response for: "${prompt}" [TRIGGER:GALAXY]`,
-                finish_reason: 'stop',
-                index: 0
-            }]
-        });
+        return res.json({ choices: [{ text: `AI unavailable. Mock: "${prompt}" [TRIGGER:GALAXY]`, finish_reason: 'stop' }] });
     }
 });
 
-// B. Identify Route (VLM Vision ID)
 app.post('/api/identify', async (req, res) => {
-    console.log("👁️  Identification request received");
-    
-    // MOCK RESPONSE if no API key
     if (!HF_API_KEY) {
-        console.log("⚠️  No HF_API_KEY - using mock vision response");
-        return res.json({ 
-            description: "A celestial object with bright stellar regions and dark dust lanes, showing characteristics of a spiral galaxy with prominent spiral arms."
-        });
+        return res.json({ description: "A celestial object with bright stellar regions." });
     }
     
     try {
@@ -153,19 +438,16 @@ app.post('/api/identify', async (req, res) => {
         );
         res.json({ description: response.data[0]?.generated_text || "Celestial structure" });
     } catch (e) {
-        console.error("❌ Vision Error:", e.message);
         res.status(500).json({ error: "Vision ID failed: " + e.message });
     }
 });
 
-// C. Discovery Route (Astrometry + NASA + Pixelmatch)
 app.post('/api/analyze-discovery', async (req, res) => {
     console.log("🚀 Starting Discovery Pipeline...");
     try {
         const { imageBase64 } = req.body;
         const imageBuffer = Buffer.from(imageBase64, 'base64');
 
-        // 1. ASTROMETRY SOLVE
         const login = await axios.post(
             'http://nova.astrometry.net/api/login', 
             `request-json=${JSON.stringify({ "apikey": ASTROMETRY_API_KEY })}`
@@ -176,61 +458,50 @@ app.post('/api/analyze-discovery', async (req, res) => {
         form.append('request-json', JSON.stringify({ session, publicly_visible: 'n' }));
         form.append('file', imageBuffer, { filename: 'observation.jpg' });
         
-        const upload = await axios.post(
-            'http://nova.astrometry.net/api/upload', 
-            form, 
-            { headers: form.getHeaders() }
-        );
+        const upload = await axios.post('http://nova.astrometry.net/api/upload', form, { headers: form.getHeaders() });
         const calibration = await getCalibrationResults(upload.data.subid);
         
-        // 2. NASA SKYVIEW FETCH
         const nasaUrl = `https://skyview.gsfc.nasa.gov/cgi-bin/images?survey=sdssi&position=${calibration.ra},${calibration.dec}&size=0.1&pixels=500`;
-        console.log("🛰️  NASA Historical Image:", nasaUrl);
-
-        // 3. PIXEL DIFFERENCE
         const diffCount = await performChangeDetection(imageBuffer, nasaUrl);
         const isAnomaly = diffCount > 1500;
 
         res.json({
-            coords: { 
-                ra: calibration.ra.toFixed(4), 
-                dec: calibration.dec.toFixed(4) 
-            },
+            coords: { ra: calibration.ra.toFixed(4), dec: calibration.dec.toFixed(4) },
             historicalImage: nasaUrl,
-            discovery: isAnomaly 
-                ? `ANOMALY: Found ${diffCount} pixel variances.` 
-                : "Region stable.",
-            type: isAnomaly ? "SUPERNOVA" : "GALAXY"
+            discovery: isAnomaly ? `ANOMALY: Found ${diffCount} pixel variances.` : "Region stable.",
+            type: isAnomaly ? "SUPERNOVA" : "GALAXY",
+            rawScore: diffCount
         });
-        console.log("✅ Pipeline Complete");
-
     } catch (e) {
-        console.error("❌ Discovery Pipeline Error:", e.message);
         res.status(500).json({ error: e.message });
     }
 });
 
-// D. Root endpoint
+// --- 9. ROOT ENDPOINT ---
 app.get('/', (req, res) => {
+    const totalComments = communityPosts.reduce((sum, post) => sum + countNestedComments(post.comments), 0);
+    
     res.json({
         message: '🌌 AstroVision Discovery Backend',
-        version: '1.0.0',
-        endpoints: {
-            chat: 'POST /api/chat',
-            identify: 'POST /api/identify',
-            discovery: 'POST /api/analyze-discovery'
-        },
+        version: '3.0.0',
+        features: ['User Profiles', 'Nested Comments', 'Community Board', 'AI Analysis'],
         status: {
-            hf_api_key: HF_API_KEY ? 'configured' : 'missing (using mocks)',
-            astrometry_key: ASTROMETRY_API_KEY ? 'configured' : 'missing'
+            users: Object.keys(userProfiles).length,
+            posts: communityPosts.length,
+            comments: totalComments,
+            hf_api_key: HF_API_KEY ? '✓' : '✗',
+            astrometry_key: ASTROMETRY_API_KEY ? '✓' : '✗'
         }
     });
 });
 
-// --- 5. START SERVER ---
+// --- 10. START SERVER ---
 app.listen(PORT, () => {
-    console.log(`\n🌌 AstroVision Backend running on http://localhost:${PORT}`);
-    console.log(`🔑 HF API Key: ${HF_API_KEY ? '✓ Configured' : '✗ Missing (using mock responses)'}`);
-    console.log(`🔭 Astrometry Key: ${ASTROMETRY_API_KEY ? '✓ Configured' : '✗ Missing'}`);
-    console.log(`✅ Ready for Discovery, Vision, and Chat\n`);
+    console.log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+    console.log(`🌌 AstroVision Backend v3.0`);
+    console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+    console.log(`🚀 Server: http://localhost:${PORT}`);
+    console.log(`👥 Features: Profiles + Nested Comments`);
+    console.log(`✅ All systems ready!`);
+    console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
 });
