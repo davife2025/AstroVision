@@ -3,19 +3,8 @@ import React, { useState, useEffect } from 'react';
 function SignIn({ onClose, onSignIn }) {
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState('');
-  const [walletAddress, setWalletAddress] = useState('');
+  
 
-  useEffect(() => {
-    // Check if wallet already connected
-    if (window.ethereum) {
-      window.ethereum.request({ method: 'eth_accounts' })
-        .then(accounts => {
-          if (accounts.length > 0) {
-            setWalletAddress(accounts[0]);
-          }
-        });
-    }
-  }, []);
 
   const connectTwitter = () => {
     setIsConnecting(true);
@@ -58,63 +47,6 @@ function SignIn({ onClose, onSignIn }) {
     
     window.location.href = authUrl;
   };
-
- /* const connectWallet = async () => {
-    setIsConnecting(true);
-    setError('');
-
-    try {
-      // Check if MetaMask is installed
-      if (!window.ethereum) {
-        setError('Please install MetaMask or another Web3 wallet');
-        setIsConnecting(false);
-        return;
-      }
-
-      // Request account access
-      const accounts = await window.ethereum.request({ 
-        method: 'eth_requestAccounts' 
-      });
-
-      if (accounts.length === 0) {
-        setError('No accounts found');
-        setIsConnecting(false);
-        return;
-      }
-
-      const address = accounts[0];
-      setWalletAddress(address);
-
-      // Create user from wallet
-      const walletUser = {
-        id: 'wallet-' + address.substring(0, 10),
-        username: 'Astronaut_' + address.substring(2, 8),
-        method: 'wallet',
-        walletAddress: address,
-        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${address}`
-      };
-
-      localStorage.setItem('userId', walletUser.id);
-      localStorage.setItem('userAuth', JSON.stringify(walletUser));
-      onSignIn(walletUser);
-      setIsConnecting(false);
-    } catch (err) {
-      console.error('Wallet connection error:', err);
-      setError(err.message || 'Failed to connect wallet');
-      setIsConnecting(false);
-    }
-  };
-
-
-
-
-
-
-  
-
-
-
-  */
 
   const continueAsGuest = () => {
     const guestUser = {
