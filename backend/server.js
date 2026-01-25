@@ -509,9 +509,6 @@ app.get('/auth/twitter/callback', async (req, res) => {
     try {
         const { code, state } = req.query;
         
-        // Verify state to prevent CSRF
-        // In production, store state in session and verify it
-        
         if (!code) {
             return res.redirect(`${FRONTEND_URL}?error=no_code`);
         }
@@ -569,43 +566,6 @@ app.get('/auth/twitter/callback', async (req, res) => {
         res.redirect(`${FRONTEND_URL}?error=auth_failed`);
     }
 });
-
-// Wallet verification endpoint
-app.post('/auth/wallet/verify', async (req, res) => {
-    try {
-        const { address, signature, message } = req.body;
-
-        if (!address || !signature || !message) {
-            return res.status(400).json({ error: 'Missing required fields' });
-        }
-
-        // In production, verify the signature here
-        // For now, we'll trust the frontend verification
-        
-        const userId = `wallet-${address.substring(0, 10)}`;
-        const user = getOrCreateUser(userId);
-        user.walletAddress = address;
-        user.method = 'wallet';
-        user.username = user.username || `Astronaut_${address.substring(2, 8)}`;
-
-        console.log(`✅ Wallet auth successful: ${address}`);
-
-        res.json({
-            success: true,
-            user: {
-                id: userId,
-                username: user.username,
-                walletAddress: address,
-                avatar: user.avatar
-            }
-        });
-
-    } catch (error) {
-        console.error('❌ Wallet verification error:', error.message);
-        res.status(500).json({ error: 'Verification failed' });
-    }
-});
-
 // Get current user
 app.get('/auth/me', (req, res) => {
     try {
@@ -629,14 +589,15 @@ app.get('/auth/me', (req, res) => {
     }
 });
 
-
 // --- 10. START SERVER ---
+
+// Update the server startup message to show auth status
 app.listen(PORT, () => {
     console.log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
     console.log(`🌌 AstroVision Backend v3.0`);
     console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
     console.log(`🚀 Server: http://localhost:${PORT}`);
-    console.log(`👥 Features: Profiles + Auth + Community`);
+    console.log(`👥 Features: Profiles + Twitter Auth + Community`);
     console.log(`🔐 Twitter OAuth: ${TWITTER_CLIENT_ID ? '✓' : '✗'}`);
     console.log(`✅ All systems ready!`);
     console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);

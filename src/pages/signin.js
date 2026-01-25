@@ -1,10 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 
 function SignIn({ onClose, onSignIn }) {
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState('');
-  
-
 
   const connectTwitter = () => {
     setIsConnecting(true);
@@ -114,8 +112,11 @@ function SignIn({ onClose, onSignIn }) {
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center'
+            justifyContent: 'center',
+            transition: 'all 0.2s'
           }}
+          onMouseEnter={(e) => e.target.style.background = 'rgba(255,255,255,0.2)'}
+          onMouseLeave={(e) => e.target.style.background = 'rgba(255,255,255,0.1)'}
         >
           ×
         </button>
@@ -127,7 +128,7 @@ function SignIn({ onClose, onSignIn }) {
             color: '#00ffcc',
             marginBottom: '10px'
           }}>
-             Welcome to AstroVision
+           Welcome to AstroVision
           </h2>
           <p style={{
             color: 'rgba(255,255,255,0.7)',
@@ -183,6 +184,7 @@ function SignIn({ onClose, onSignIn }) {
             </svg>
             {isConnecting ? 'Connecting...' : 'Continue with Twitter'}
           </button>
+
           {/* Divider */}
           <div style={{
             display: 'flex',
@@ -210,8 +212,14 @@ function SignIn({ onClose, onSignIn }) {
               cursor: 'pointer',
               transition: 'all 0.3s'
             }}
-            onMouseEnter={(e) => e.target.style.background = 'rgba(255,255,255,0.1)'}
-            onMouseLeave={(e) => e.target.style.background = 'rgba(255,255,255,0.05)'}
+            onMouseEnter={(e) => {
+              e.target.style.background = 'rgba(255,255,255,0.1)';
+              e.target.style.borderColor = 'rgba(255,255,255,0.3)';
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.background = 'rgba(255,255,255,0.05)';
+              e.target.style.borderColor = 'rgba(255,255,255,0.2)';
+            }}
           >
             Continue as Guest
           </button>
@@ -233,9 +241,3 @@ function SignIn({ onClose, onSignIn }) {
 }
 
 export default SignIn;
-
-
-
-
-
-/* */
