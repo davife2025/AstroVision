@@ -192,27 +192,27 @@ function App() {
   return (
     <div className="App">
         <SpaceBackground/>
-      <header className="app-header">
-        <div className="header-top">
-          <div className="nav-menu">
-            <button
-              onClick={() => setShowMenu(!showMenu)}
-              className="nav-button menu-button"
-              aria-label="Menu"
-            >
-              ☰
-            </button>
-<br></br><br></br>
-            <h1 className="header-title"> AstroVision</h1>
+              <header className="app-header">
+                <div className="header-top">
+                  <div className="nav-menu">
+                    <button
+                      onClick={() => setShowMenu(!showMenu)}
+                      className="nav-button menu-button"
+                      aria-label="Menu"
+                    >
+                      ☰
+                    </button>
+        <br></br><br></br>
+                    <h1 className="header-title"> AstroVision</h1>
 
-            <button onClick={() => setActiveTab('home')} className={`nav-button desktop-nav-btn ${activeTab === 'home' ? 'active' : ''}`}> Observation</button>
-            <button onClick={() => setActiveTab('avdao')} className={`nav-button desktop-nav-btn ${activeTab === 'avdao' ? 'active' : ''}`}> Community</button>
-            <button onClick={() => setActiveTab('space')} className={`nav-button desktop-nav-btn ${activeTab === 'space' ? 'active' : ''}`}> Space Lab</button>
-            <button onClick={() => setActiveTab('playground')} className={`nav-button desktop-nav-btn ${activeTab === 'playground' ? 'active' : ''}`}> Playground</button>
-            <button onClick={() => setActiveTab('mars')} className={`nav-button desktop-nav-btn ${activeTab === 'mars' ? 'active' : ''}`}> Mars</button>
-          </div>
-        </div>
-      </header>
+                    <button onClick={() => setActiveTab('home')} className={`nav-button desktop-nav-btn ${activeTab === 'home' ? 'active' : ''}`}> Observation</button>
+                    <button onClick={() => setActiveTab('avdao')} className={`nav-button desktop-nav-btn ${activeTab === 'avdao' ? 'active' : ''}`}> Community</button>
+                    <button onClick={() => setActiveTab('space')} className={`nav-button desktop-nav-btn ${activeTab === 'space' ? 'active' : ''}`}> Space Lab</button>
+                    <button onClick={() => setActiveTab('playground')} className={`nav-button desktop-nav-btn ${activeTab === 'playground' ? 'active' : ''}`}> Playground</button>
+                    <button onClick={() => setActiveTab('mars')} className={`nav-button desktop-nav-btn ${activeTab === 'mars' ? 'active' : ''}`}> Mars</button>
+                  </div>
+                </div>
+              </header>
 
       {showMenu && (
         <>

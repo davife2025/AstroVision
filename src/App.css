@@ -224,8 +224,16 @@ body {
 }
 
 .main-content.space {
-  background: black;
-  padding: 0;
+  background: transparent !important;
+  margin: 10px;
+  padding: 20px;
+  
+}
+ 
+
+.main-content.dao {
+  margin: 0px;
+  padding: 20px;
 }
 
 /* === RESPONSE CARDS === */
@@ -844,7 +852,7 @@ body {
 
 .space-controls {
   padding: 24px;
-  background: rgba(10, 14, 26, 0.95);
+  background: transparent !important;
   backdrop-filter: blur(20px);
   border-top: 1px solid var(--glass-border);
 }
@@ -1607,6 +1615,8 @@ button.active,
 
 /* ===== ERROR NOTIFICATIONS ===== */
 .error-notification {
+    width: 5px;
+  height: 5px;
   position: fixed;
   bottom: 30px;
   right: 30px;
@@ -1641,8 +1651,8 @@ button.active,
   background: rgba(255, 255, 255, 0.15);
   border: 1px solid rgba(255, 255, 255, 0.2);
   color: #ffffff;
-  width: 28px;
-  height: 28px;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -1799,4 +1809,8 @@ button.active,
 
 #space-canvas-container canvas {
     background: transparent !important;
+}
+
+.space-control {
+  background: transparent !important;
 }
