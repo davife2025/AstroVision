@@ -22,8 +22,19 @@ const SpaceSimulation = ({
             playsInline
             muted
             className="hand-video-overlay"
-            style={{ display: handTrackingEnabled ? 'block' : 'none' }}
+            style={{ display: 'none' ,
+                       position: 'absolute',
+                        top: '-9999px',        // ✅ Off-screen
+                        left: '-9999px',       // ✅ Off-screen
+                        width: '1px',          // ✅ Minimal size
+                        height: '1px',         // ✅ Minimal size
+                        opacity: 0,            // ✅ Invisible
+                        pointerEvents: 'none', // ✅ Not clickable
+                        visibility: 'hidden'   // ✅ Hidden from DOM
+            }}
           />
+
+
           {loading && (
             <div className="scan-overlay">
               🔭 {loadingStage || 'SCANNING COSMOS...'}
