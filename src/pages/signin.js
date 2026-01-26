@@ -85,7 +85,7 @@ function SignIn({ onClose, onSignIn }) {
       `}</style>
       
       <div style={{
-        background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
+        background: 'linear-gradient(135deg, #171725 0%, #1a1e25 100%)',
         borderRadius: '20px',
         padding: '40px',
         maxWidth: '450px',

@@ -23,7 +23,7 @@ const ObservationTab = ({ responses, loading, loadingStage }) => {
         <div className="empty-state">
             <br></br><br></br><br></br>
           <h2>Welcome to AstroVision</h2>
-          <p>Ready for input. Upload astronomical data, chat with AstroSage, or use Space Lab Auto-Scan.</p>
+          <p>Ready for input. Upload astronomical data, chat with AstroVage, or use Space Lab Auto-Scan.</p>
           <div className="features-list">
             <div className="feature-item">
               <span className="icon"></span>

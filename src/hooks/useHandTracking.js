@@ -1,56 +1,58 @@
-// src/hooks/useHandTracking.js
+// src/hooks/useHandTracking.js - FINAL FIX WITH CORRECT VIDEO ID
 
 import { useState, useCallback } from 'react';
+import { initHandTracking } from '../pages/space';
 
 export const useHandTracking = () => {
   const [handTrackingEnabled, setHandTrackingEnabled] = useState(false);
-  const [handStatus, setHandStatus] = useState({ 
-    handCount: 0, 
-    scale: 1, 
-    expansion: 1 
+  const [handStatus, setHandStatus] = useState({
+    handCount: 0,
+    scale: 1.0,
+    expansion: 1.0
   });
 
-  const toggleHandTracking = useCallback(async (videoElementId = 'hand-video') => {
+  const toggleHandTracking = useCallback(async () => {
     if (!handTrackingEnabled) {
-      // Check if space.js functions are available
-      if (typeof window.initHandTracking === 'function') {
-        const success = await window.initHandTracking(videoElementId, setHandStatus);
-        setHandTrackingEnabled(success);
-        return success;
-      } else {
-        console.error('initHandTracking not found. Make sure space.js is loaded.');
-        return false;
+      console.log('🖐️ Attempting to enable hand tracking...');
+      
+      try {
+        // ✅ CORRECT ID - Changed from 'webcam-video' to 'hand-video'
+        const videoId = 'hand-video'; // Match your SpaceSimulation component
+        
+        // Check if video element exists first
+        const videoElement = document.getElementById(videoId);
+        
+        if (!videoElement) {
+          console.error('❌ Video element not found. Available video elements:');
+          const allVideos = document.querySelectorAll('video');
+          allVideos.forEach((v, i) => {
+            console.log(`  Video ${i}: id="${v.id}", class="${v.className}"`);
+          });
+          return;
+        }
+
+        console.log('✅ Video element found:', videoElement);
+
+        // Initialize hand tracking with correct STRING ID
+        const success = await initHandTracking(videoId, (handData) => {
+          setHandStatus(handData);
+          console.log('👋 Hand data:', handData);
+        });
+
+        if (success) {
+          setHandTrackingEnabled(true);
+          console.log('✅ Hand tracking successfully enabled');
+        } else {
+          console.error('❌ Failed to initialize hand tracking');
+        }
+      } catch (error) {
+        console.error('❌ Error enabling hand tracking:', error);
       }
     } else {
-      // Stop tracking
-      if (typeof window.stopHandTracking === 'function') {
-        window.stopHandTracking();
-      }
+      // Disable hand tracking
+      console.log('🛑 Disabling hand tracking');
       setHandTrackingEnabled(false);
-      setHandStatus({ handCount: 0, scale: 1, expansion: 1 });
-      return false;
-    }
-  }, [handTrackingEnabled]);
-
-  const startTracking = useCallback(async (videoElementId = 'hand-video') => {
-    if (!handTrackingEnabled) {
-      if (typeof window.initHandTracking === 'function') {
-        const success = await window.initHandTracking(videoElementId, setHandStatus);
-        setHandTrackingEnabled(success);
-        return success;
-      }
-      return false;
-    }
-    return true;
-  }, [handTrackingEnabled]);
-
-  const stopTracking = useCallback(() => {
-    if (handTrackingEnabled) {
-      if (typeof window.stopHandTracking === 'function') {
-        window.stopHandTracking();
-      }
-      setHandTrackingEnabled(false);
-      setHandStatus({ handCount: 0, scale: 1, expansion: 1 });
+      setHandStatus({ handCount: 0, scale: 1.0, expansion: 1.0 });
     }
   }, [handTrackingEnabled]);
 
@@ -58,9 +60,5 @@ export const useHandTracking = () => {
     handTrackingEnabled,
     handStatus,
     toggleHandTracking,
-    startTracking,
-    stopTracking,
   };
 };
-
-export default useHandTracking;

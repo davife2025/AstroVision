@@ -4,7 +4,7 @@ import React from 'react';
 
 const SpaceSimulation = ({ 
   handTrackingEnabled, 
-  handStatus, 
+  handStatus = { handCount: 0, scale: 1.0, expansion: 1.0 }, 
   onToggleHandTracking,
   selectedShape,
   shapes,
@@ -43,15 +43,15 @@ const SpaceSimulation = ({
             <div className="hand-info">
               <div className="hand-stat">
                 <span className="label">Hands:</span>
-                <span className="value">{handStatus.handCount}</span>
+                <span className="value">{handStatus?.handCount || 0}</span>
               </div>
               <div className="hand-stat">
                 <span className="label">Scale:</span>
-                <span className="value">{handStatus.scale.toFixed(2)}</span>
+                <span className="value">{handStatus?.scale ? handStatus.scale.toFixed(2) : '1.00'}</span>
               </div>
               <div className="hand-stat">
                 <span className="label">Expansion:</span>
-                <span className="value">{handStatus.expansion.toFixed(2)}</span>
+                <span className="value">{handStatus?.expansion ? handStatus.expansion.toFixed(2) : '1.00'}</span>
               </div>
             </div>
           )}

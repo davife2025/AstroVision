@@ -1,11 +1,11 @@
-// src/hooks/useSpaceSimulation.js
+// src/hooks/useSpaceSimulation.js - FIXED VERSION
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   initThree, 
   createParticles, 
   changeColor, 
-  cleanup,
+  cleanupThree,  // ✅ Changed from 'cleanup' to 'cleanupThree'
   checkAutoScan
 } from '../pages/space';
 import { PARTICLE_SHAPES, DISCOVERY_TYPES, AUTO_SCAN_INTERVAL, DEBOUNCE_DELAY } from '../utils/constants';
@@ -22,16 +22,24 @@ export const useSpaceSimulation = (isActive, handTrackingEnabled, onAutoScan) =>
   // Initialize Three.js when simulation becomes active
   useEffect(() => {
     if (isActive && !threeInitialized.current) {
+      console.log('🎨 Initializing Three.js...');
+      
       setTimeout(() => {
-        initThree('space-canvas-container');
-        threeInitialized.current = true;
-        threeReady.current = true;
+        try {
+          initThree('space-canvas-container');
+          threeInitialized.current = true;
+          threeReady.current = true;
+          console.log('✅ Three.js initialized');
+        } catch (error) {
+          console.error('❌ Three.js initialization error:', error);
+        }
       }, 100);
     }
 
     return () => {
       if (!isActive && threeInitialized.current) {
-        cleanup();
+        console.log('🧹 Cleaning up Three.js...');
+        cleanupThree(); // ✅ Using cleanupThree
         threeInitialized.current = false;
         threeReady.current = false;
       }
@@ -71,23 +79,43 @@ export const useSpaceSimulation = (isActive, handTrackingEnabled, onAutoScan) =>
       }
     }, AUTO_SCAN_INTERVAL);
 
-    return () => clearInterval(autoScanInterval);
-  }, [isActive, handTrackingEnabled, onAutoScan, handleAutoScan]); // ✅ FIX
+    return () => {
+      clearInterval(autoScanInterval);
+      if (debounceTimeout.current) {
+        clearTimeout(debounceTimeout.current);
+      }
+    };
+  }, [isActive, handTrackingEnabled, onAutoScan, handleAutoScan]);
 
   const changeShape = useCallback((shape) => {
-    if (!threeReady.current) return;
+    if (!threeReady.current) {
+      console.warn('⚠️ Three.js not ready, cannot change shape');
+      return;
+    }
+    
+    console.log('🔄 Changing shape to:', shape);
     setSelectedShape(shape);
     createParticles(shape);
   }, []);
 
   const updateColor = useCallback((color) => {
-    if (!threeReady.current) return;
+    if (!threeReady.current) {
+      console.warn('⚠️ Three.js not ready, cannot change color');
+      return;
+    }
+    
+    console.log('🎨 Changing color to:', color);
     setParticleColor(color);
     changeColor(color);
   }, []);
 
   const updateSimulationFromAI = useCallback((aiText, type) => {
-    if (!threeReady.current) return;
+    if (!threeReady.current) {
+      console.warn('⚠️ Three.js not ready, cannot update from AI');
+      return;
+    }
+
+    console.log('🤖 AI triggered update:', type);
 
     if (aiText.includes('[TRIGGER:GALAXY]') || type === DISCOVERY_TYPES.GALAXY) {
       changeShape('galaxy');
