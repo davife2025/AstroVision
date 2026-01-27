@@ -1,0 +1,52 @@
+/* src/App.css */
+
+/* 1. Make sure no parent is blocking clicks */
+.playground-wrapper {
+    pointer-events: none !important;
+    position: absolute;
+    inset: 0;
+    z-index: 10;
+}
+
+/* 2. The Nuclear Fix for the Console */
+.playground-footer-console {
+    all: unset; /* Remove all inherited restrictions */
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 120px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    z-index: 100000 !important; /* Absolute top */
+    pointer-events: auto !important; /* Turn clicks back on */
+    background: linear-gradient(to top, rgba(0, 5, 10, 1) 40%, transparent) !important;
+}
+
+.hud-console-layout {
+    display: flex !important;
+    gap: 15px !important;
+    width: 90% !important;
+    max-width: 800px !important;
+    pointer-events: auto !important;
+}
+
+/* 3. Force the Input to be typable */
+.hud-input-field {
+    pointer-events: auto !important;
+    user-select: text !important;
+    cursor: text !important;
+    -webkit-user-select: text !important;
+    z-index: 100001 !important;
+    background: rgba(0, 255, 255, 0.1) !important;
+    border: 1px solid #00ffff !important;
+    color: white !important;
+    padding: 15px !important;
+    flex: 1 !important;
+}
+
+/* 4. Disable mouse on the background 'Glass' */
+.hud-windshield, .hud-reticle, .SpaceBackground, canvas {
+    pointer-events: none !important;
+}

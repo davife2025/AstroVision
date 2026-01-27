@@ -11,6 +11,7 @@ import Profile from './pages/profile';
 import SignIn from './pages/signin';
 import DAO from './pages/dao';
 import SpaceBackground from './components/spaceBackground';
+import Playground from './pages/playground';
 
 // Services
 import { runDiscoveryAnalysis, chatWithAstroSage } from './services/aiServices';
@@ -23,6 +24,8 @@ import { useSpaceSimulation } from './hooks/useSpaceSimulation';
 // Utils
 import { cleanAIResponse } from './utils/helpers';
 import { ERROR_MESSAGES } from './utils/constants';
+
+
 
 function App() {
   const [activeTab, setActiveTab] = useState('home');
@@ -40,6 +43,8 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
+  const [playgroundPrompt, setPlaygroundPrompt] = useState(''); // ← ADD HERE
+
 
   const fileInputRef = useRef(null);
   const userId = useRef(localStorage.getItem('userId') || 'user-' + Math.random().toString(36).substr(2, 9));
@@ -275,7 +280,108 @@ function App() {
       {activeTab === 'home' && <ObservationTab responses={responses} loading={loading} loadingStage={loadingStage} />}
       {activeTab === 'space' && <SpaceSimulation handTrackingEnabled={handTrackingEnabled} handStatus={handStatus} onToggleHandTracking={toggleHandTracking} selectedShape={selectedShape} shapes={shapes} onShapeChange={changeShape} loading={loading} loadingStage={loadingStage} />}
       {activeTab === 'avdao' && <DAO onViewProfile={openProfile} />}
-      {activeTab === 'playground' && <div className="main-content" style={{display: 'flex', alignItems: 'center', justifyContent: 'center'}}><h2 style={{color: '#818cf8'}}>Playground - Coming Soon</h2></div>}
+
+
+
+
+
+
+
+
+
+
+
+
+{activeTab === 'playground' && (
+  <div className="playground-wrapper">
+    {/* 1. The HUD Vision/Sensor Panel (Left) */}
+    <div className="hud-glass-panel panel-left animate-hud-float">
+      <div className="panel-header-tag">NEURAL SENSOR LOG</div>
+      <div className="log-content">
+        <p className="log-status-text">{loadingStage || ">>> SYSTEMS STANDBY"}</p>
+        {handStatus.handCount > 0 && (
+          <p className="log-proximity-text"> PROXIMITY: {handStatus.scale.toFixed(2)}</p>
+        )}
+      </div>
+    </div>
+
+    {/* 2. The Direct Playground Component */}
+    <Playground 
+      onLoadingStage={setLoadingStage} 
+      handStatus={handStatus}
+    />
+
+    {/* 3. The Interactive Console (Bottom HUD) */}
+    <div className="playground-footer-console">
+       <div className="hud-console-layout">
+<input 
+  type="text" 
+  autoFocus  // Automatically click the box for the user
+  className="hud-input-field"
+  placeholder="COMMENCE TYPING..."
+  value={prompt} 
+  onChange={(e) => {
+    console.log("Typing detected:", e.target.value); // If you don't see this in console, the box is blocked
+    setPlaygroundPrompt(e.target.value);
+  }}
+/>
+ <button 
+  className="hud-btn-primary"
+onClick={() => {
+  console.log("Morph button clicked with:", playgroundPrompt);
+  if (typeof window.executeTextMorph === 'function') {
+    window.executeTextMorph(playgroundPrompt);
+    setPlaygroundPrompt(""); // ← Fix capitalization here
+  }
+}}
+>
+  MORPH
+</button>
+
+<button 
+  className="hud-btn-secondary"
+  onClick={() => {
+     if (typeof window.activateCameraSensor === 'function') {
+        window.activateCameraSensor();
+     }
+  }}
+>
+  ACTIVATE SENSORS
+</button>
+       </div>
+    </div>
+  </div>
+)}
+
+
+   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+      
       {activeTab === 'mars' && <div className="main-content" style={{display: 'flex', alignItems: 'center', justifyContent: 'center'}}><h2 style={{color: '#ff3366'}}> Mars - Coming Soon</h2></div>}
 
    {activeTab === 'home' && (
