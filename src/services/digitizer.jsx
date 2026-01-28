@@ -1,5 +1,3 @@
-import * as THREE from 'three';
-
 export function sampleTextToPoints(text, pointCount = 6000) {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
