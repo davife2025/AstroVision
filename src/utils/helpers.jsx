@@ -78,20 +78,6 @@ export const parseAIResponse = (data, fallback = 'No response generated.') => {
   }
 };
 
-/**
- * Clean AI response text
- * Removes extra whitespace and formatting artifacts
- */
-export const cleanAIResponse = (text) => {
-  if (!text) return '';
-  
-  return text
-    .trim()
-    .replace(/\n{3,}/g, '\n\n') // Remove excessive line breaks
-    .replace(/\s{2,}/g, ' ')    // Remove excessive spaces
-    .replace(/^\s+|\s+$/gm, '') // Trim each line
-    .trim();
-};
 
 /**
  * Retry a fetch operation with exponential backoff
@@ -213,27 +199,37 @@ export const safeJsonParse = (str, fallback = null) => {
 };
 
 
-
 window.processHandLandmarks = (results) => {
-    if (!results.multiHandLandmarks || results.multiHandLandmarks.length === 0) {
-        return { isPresent: false, handCount: 0 };
-    }
+  if (!results.multiHandLandmarks || results.multiHandLandmarks.length === 0) {
+    return { isPresent: false, handCount: 0 };
+  }
+  const landmarks = results.multiHandLandmarks[0];
+  const indexTip = landmarks[8];
+  const palmBase = landmarks[0];
+  const middleBase = landmarks[9];
+  const palmSize = Math.hypot(palmBase.x - middleBase.x, palmBase.y - middleBase.y);
 
-    const landmarks = results.multiHandLandmarks[0];
-    const indexTip = landmarks[8];
-    const palmBase = landmarks[0];
-    const middleBase = landmarks[9];
-
-    // Calculate Z-Proximity (Hand distance to camera)
-    const palmSize = Math.hypot(palmBase.x - middleBase.x, palmBase.y - middleBase.y);
-
-    return {
-        isPresent: true,
-        handCount: results.multiHandLandmarks.length,
-        x: (indexTip.x - 0.5) * 10,
-        y: -(indexTip.y - 0.5) * 10,
-        zProximity: Math.min(Math.max(palmSize * 15, 0.5), 3.0), // Sensitivity for the "poke"
-        scale: palmSize * 20 // For the HUD readout
-    };
+  return {
+    isPresent: true,
+    handCount: results.multiHandLandmarks.length,
+    x: (indexTip.x - 0.5) * 10,
+    y: -(indexTip.y - 0.5) * 10,
+    zProximity: Math.min(Math.max(palmSize * 15, 0.5), 3.0),
+    scale: palmSize * 20
+  };
 };
 
+/**
+ * Clean AI response text
+ * Removes extra whitespace and formatting artifacts
+ */
+export const cleanAIResponse = (text) => {
+  if (!text) return '';
+  
+  return text
+    .trim()
+    .replace(/\n{3,}/g, '\n\n') // Remove excessive line breaks
+    .replace(/\s{2,}/g, ' ')    // Remove excessive spaces
+    .replace(/^\s+|\s+$/gm, '') // Trim each line
+    .trim();
+};

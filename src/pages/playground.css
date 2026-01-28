@@ -1,52 +1,163 @@
-/* src/App.css */
+/* --- THE FIX: ENSURING INTERACTIVITY --- */
 
-/* 1. Make sure no parent is blocking clicks */
-.playground-wrapper {
-    pointer-events: none !important;
-    position: absolute;
-    inset: 0;
-    z-index: 10;
+:root {
+  --hud-cyan: #00ffff;
+  --hud-glow: rgba(0, 255, 255, 0.3);
 }
 
-/* 2. The Nuclear Fix for the Console */
+.playground-wrapper {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none; /* Allows interactions to fall through to background */
+  display: flex;
+  flex-direction: column;
+}
+
+/* --- Neural Sensor Log (Left HUD Panel) --- */
+.hud-glass-panel.panel-left {
+  position: fixed;
+  top: 100px;
+  left: 20px;
+  width: 280px;
+  pointer-events: auto; /* ENABLE CLICKS */
+  border-left: 4px solid var(--hud-cyan);
+  background: rgba(0, 20, 30, 0.6);
+  backdrop-filter: blur(10px);
+  padding: 20px;
+  font-family: 'Orbitron', monospace;
+  z-index: 20;
+}
+
+/* --- Playground Console (Bottom HUD) --- */
 .playground-footer-console {
-    all: unset; /* Remove all inherited restrictions */
-    position: fixed !important;
-    bottom: 0 !important;
-    left: 0 !important;
-    width: 100% !important;
-    height: 120px !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    z-index: 100000 !important; /* Absolute top */
-    pointer-events: auto !important; /* Turn clicks back on */
-    background: linear-gradient(to top, rgba(0, 5, 10, 1) 40%, transparent) !important;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  pointer-events: none; /* Container is transparent to clicks... */
 }
 
 .hud-console-layout {
-    display: flex !important;
-    gap: 15px !important;
-    width: 90% !important;
-    max-width: 800px !important;
-    pointer-events: auto !important;
+  pointer-events: auto; /* ...BUT THE ACTUAL UI CAPTURES CLICKS */
+  display: flex;
+  gap: 15px;
+  width: 90%;
+  max-width: 800px;
+  padding: 20px;
+  background: rgba(0, 10, 20, 0.85);
+  backdrop-filter: blur(15px);
+  border: 1px solid var(--hud-glow);
+  border-bottom: 3px solid var(--hud-cyan);
+  box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.5);
+  border-radius: 12px 12px 0 0;
 }
 
-/* 3. Force the Input to be typable */
+/* --- Digital Input Box --- */
 .hud-input-field {
-    pointer-events: auto !important;
-    user-select: text !important;
-    cursor: text !important;
-    -webkit-user-select: text !important;
-    z-index: 100001 !important;
-    background: rgba(0, 255, 255, 0.1) !important;
-    border: 1px solid #00ffff !important;
-    color: white !important;
-    padding: 15px !important;
-    flex: 1 !important;
+  flex: 1;
+  background: rgba(0, 255, 255, 0.05);
+  border: 1px solid var(--hud-glow);
+  color: #fff;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-family: 'Orbitron', sans-serif;
+  letter-spacing: 2px;
+  font-size: 14px;
+  transition: all 0.3s ease;
+  outline: none;
+  pointer-events: auto; /* CLICKABLE */
 }
 
-/* 4. Disable mouse on the background 'Glass' */
-.hud-windshield, .hud-reticle, .SpaceBackground, canvas {
-    pointer-events: none !important;
+.hud-input-field:focus {
+  border-color: var(--hud-cyan);
+  box-shadow: 0 0 15px var(--hud-cyan);
+  background: rgba(0, 255, 255, 0.1);
+}
+
+/* --- Morph & Sensor Buttons --- */
+.hud-btn-primary, .hud-btn-secondary {
+  font-family: 'Orbitron', sans-serif;
+  font-weight: bold;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 140px;
+  padding: 12px 24px;
+  border-radius: 8px;
+  border: 1px solid var(--hud-cyan);
+  pointer-events: auto; /* CLICKABLE */
+}
+
+.hud-btn-primary {
+  background: var(--hud-cyan);
+  color: #000;
+}
+
+.hud-btn-secondary {
+  background: transparent;
+  color: var(--hud-cyan);
+}
+
+.hud-btn-primary:hover, .hud-btn-secondary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 20px var(--hud-cyan);
+  filter: brightness(1.2);
+}
+
+.hud-btn-primary:active, .hud-btn-secondary:active {
+  transform: translateY(0);
+}
+
+/* --- Scanning Animation --- */
+.playground-scan-overlay {
+  position: absolute;
+  top: 15%;
+  left: 10%;
+  width: 80%;
+  height: 70%;
+  border: 1px solid rgba(0, 255, 255, 0.2);
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.playground-scan-overlay::after {
+  content: "";
+  position: absolute;
+  top: -100%;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(to bottom, transparent, rgba(0, 255, 255, 0.2), transparent);
+  animation: scanMove 3s linear infinite;
+}
+
+@keyframes scanMove {
+  0% { top: -100%; }
+  100% { top: 100%; }
+}
+
+/* --- Responsive Adjustments --- */
+@media (max-width: 768px) {
+  .hud-glass-panel.panel-left {
+    width: 200px;
+    left: 10px;
+    top: 80px;
+  }
+  
+  .hud-console-layout {
+    flex-direction: column;
+    width: 95%;
+    gap: 10px;
+    padding: 15px;
+  }
+  
+  .hud-btn-primary, .hud-btn-secondary {
+    width: 100%;
+  }
 }

@@ -1,84 +1,58 @@
 import * as THREE from 'three';
 
-/**
- * Turns Text into a 3D target map
- */
 export function sampleTextToPoints(text, pointCount = 6000) {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
-    canvas.width = 1024;
-    canvas.height = 256;
+    canvas.width = 1024; canvas.height = 256;
+    ctx.fillStyle = 'black'; ctx.fillRect(0, 0, 1024, 256);
+    ctx.fillStyle = 'white'; ctx.font = 'bold 130px Orbitron';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(text.toUpperCase(), 512, 128);
 
-    ctx.fillStyle = 'black';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = 'white';
-    ctx.font = 'bold 140px Orbitron, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(text.toUpperCase(), canvas.width / 2, canvas.height / 2);
-
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+    const data = ctx.getImageData(0, 0, 1024, 256).data;
     const pixels = [];
-    for (let y = 0; y < canvas.height; y += 4) {
-        for (let x = 0; x < canvas.width; x += 4) {
-            const index = (y * canvas.width + x) * 4;
-            if (imageData[index] > 128) {
-                pixels.push({
-                    x: (x - canvas.width / 2) * 0.015,
-                    y: (canvas.height / 2 - y) * 0.015
-                });
-            }
+    for (let y = 0; y < 256; y += 4) {
+        for (let x = 0; x < 1024; x += 4) {
+            if (data[(y * 1024 + x) * 4] > 128) pixels.push({ x: (x - 512) * 0.02, y: (128 - y) * 0.02 });
         }
     }
 
-    const pts = [];
-    const colors = [];
+    const pos = new Float32Array(pointCount * 3);
+    const col = new Float32Array(pointCount * 3);
     for (let i = 0; i < pointCount; i++) {
         const p = pixels.length > 0 ? pixels[i % pixels.length] : { x: 0, y: 0 };
-        pts.push(new THREE.Vector3(p.x, p.y, (Math.random() - 0.5) * 0.5));
-        colors.push(0, 1, 1); // Cyan for text
+        pos[i*3] = p.x; pos[i*3+1] = p.y; pos[i*3+2] = (Math.random()-0.5)*0.5;
+        col[i*3] = 0; col[i*3+1] = 1; col[i*3+2] = 1;
     }
-    return { points: new Float32Array(pts.flatMap(v => [v.x, v.y, v.z])), colors: new Float32Array(colors) };
+    return { points: pos, colors: col };
 }
 
-/**
- * Turns an Image into a 3D target map
- */
 export async function sampleImageToPoints(imageSrc, pointCount = 6000) {
     return new Promise((resolve) => {
         const img = new Image();
-        img.crossOrigin = "anonymous";
+        img.crossOrigin = "Anonymous";
         img.src = imageSrc;
         img.onload = () => {
             const canvas = document.createElement('canvas');
-            const size = 128;
-            canvas.width = size; canvas.height = size;
             const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0, size, size);
-            
-            const data = ctx.getImageData(0, 0, size, size).data;
-            const candidates = [];
+            canvas.width = 128; canvas.height = 128;
+            ctx.drawImage(img, 0, 0, 128, 128);
+            const data = ctx.getImageData(0, 0, 128, 128).data;
+            const valid = [];
             for (let i = 0; i < data.length; i += 4) {
-                const brightness = (data[i] + data[i+1] + data[i+2]) / 3;
-                if (brightness > 30) {
-                    const idx = i / 4;
-                    candidates.push({
-                        x: (idx % size) / size * 10 - 5,
-                        y: -(Math.floor(idx / size)) / size * 10 + 5,
-                        z: (brightness / 255) * 2,
-                        r: data[i]/255, g: data[i+1]/255, b: data[i+2]/255
-                    });
+                if ((data[i]+data[i+1]+data[i+2])/3 > 40) {
+                    const idx = i/4;
+                    valid.push({ x: (idx%128)/128*10-5, y: -(Math.floor(idx/128))/128*10+5, z: (data[i]/255)*2-1, r: data[i]/255, g: data[i+1]/255, b: data[i+2]/255 });
                 }
             }
-
-            const pts = [];
-            const colors = [];
+            const pos = new Float32Array(pointCount*3);
+            const col = new Float32Array(pointCount*3);
             for (let i = 0; i < pointCount; i++) {
-                const c = candidates.length > 0 ? candidates[i % candidates.length] : {x:0,y:0,z:0,r:0,g:1,b:1};
-                pts.push(c.x, c.y, c.z);
-                colors.push(c.r, c.g, c.b);
+                const p = valid[i % valid.length];
+                pos[i*3] = p.x; pos[i*3+1] = p.y; pos[i*3+2] = p.z;
+                col[i*3] = p.r; col[i*3+1] = p.g; col[i*3+2] = p.b;
             }
-            resolve({ points: new Float32Array(pts), colors: new Float32Array(colors) });
+            resolve({ points: pos, colors: col });
         };
     });
 }

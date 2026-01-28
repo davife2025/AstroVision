@@ -1,57 +1,52 @@
 import * as THREE from 'three';
 import { gsap } from 'gsap';
 
-let scene, camera, renderer, points, geometry, shaderMaterial;
-let animationId;
+let scene, camera, renderer, points, geometry, shaderMaterial, animationId;
 const POINT_COUNT = 6000;
 
 // --- VERTEX SHADER ---
 const vertexShader = `
-    // These are the ONLY things we need to declare. 
-    // Three.js injects 'position', 'modelViewMatrix', and 'projectionMatrix' automatically.
+    // DO NOT declare 'position', 'modelViewMatrix', or 'projectionMatrix'. 
+    // Three.js injects them automatically.
 
     varying vec3 vColor;
-    varying float vOpacity;
-
+    
     uniform float uTime;
     uniform float uProgress;
     uniform vec3 uHandPos;
     uniform float uHandStrength;
     uniform float uHandActive;
 
-    // Custom attributes we added to our BufferGeometry
+    // We must declare 'color' because we enabled vertexColors in the material
     attribute vec3 color; 
     attribute vec3 targetPos;
     attribute vec3 targetColor;
 
     void main() {
-        // 1. Morphing Logic: position is built-in
+        // 1. Morphing: Interpolate between current and target
         vec3 morphedPos = mix(position, targetPos, uProgress);
         
-        // 2. Swirl Effect
+        // 2. Cosmic Swirl
         float swirl = sin(uProgress * 3.14159) * 2.0;
         morphedPos.x += cos(uTime + morphedPos.z) * swirl;
         morphedPos.y += sin(uTime + morphedPos.x) * swirl;
 
-        // 3. Magnetic Interaction (Hand Poke)
+        // 3. Hand Interaction (The Poke)
         if(uHandActive > 0.5) {
             float dist = distance(morphedPos, uHandPos);
-            float radius = 1.8 * uHandStrength;
-            
+            float radius = 1.5 * uHandStrength;
             if(dist < radius) {
                 vec3 dir = normalize(morphedPos - uHandPos);
-                float force = (1.0 - dist / radius) * 0.6;
-                morphedPos += dir * force;
+                morphedPos += dir * (1.0 - dist / radius) * 0.6;
             }
         }
 
-        // 4. Color Logic: Pass to Fragment
+        // 4. Interpolate Color
         vColor = mix(color, targetColor, uProgress);
-        vOpacity = 1.0;
 
-        // 5. Final Projection: modelViewMatrix and projectionMatrix are built-in
+        // 5. Project to Screen
         vec4 mvPosition = modelViewMatrix * vec4(morphedPos, 1.0);
-        gl_PointSize = (16.0 / -mvPosition.z);
+        gl_PointSize = (20.0 / -mvPosition.z); // Size based on distance
         gl_Position = projectionMatrix * mvPosition;
     }
 `;
@@ -59,14 +54,15 @@ const vertexShader = `
 // --- FRAGMENT SHADER ---
 const fragmentShader = `
     varying vec3 vColor;
-    varying float vOpacity;
 
     void main() {
+        // Circular point shaping
         float dist = distance(gl_PointCoord, vec2(0.5));
         if (dist > 0.5) discard;
 
+        // Soft star glow
         float glow = pow(1.0 - (dist * 2.0), 2.0);
-        gl_FragColor = vec4(vColor, glow * vOpacity);
+        gl_FragColor = vec4(vColor, glow);
     }
 `;
 
@@ -83,20 +79,21 @@ export function initPlayground(containerId) {
     renderer.setSize(container.clientWidth, container.clientHeight);
     container.appendChild(renderer.domElement);
 
-    // Initial Buffer Data
+    // Initial Geometry Setup
     geometry = new THREE.BufferGeometry();
-    const positions = new Float32Array(POINT_COUNT * 3);
-    const colors = new Float32Array(POINT_COUNT * 3);
+    const pos = new Float32Array(POINT_COUNT * 3);
+    const col = new Float32Array(POINT_COUNT * 3);
 
+    // Initial random star cluster
     for(let i=0; i < POINT_COUNT * 3; i++) {
-        positions[i] = (Math.random() - 0.5) * 10;
-        colors[i] = Math.random();
+        pos[i] = (Math.random() - 0.5) * 10;
+        col[i] = Math.random();
     }
 
-    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-    geometry.setAttribute('targetPos', new THREE.BufferAttribute(new Float32Array(positions), 3));
-    geometry.setAttribute('targetColor', new THREE.BufferAttribute(new Float32Array(colors), 3));
+    geometry.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    geometry.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    geometry.setAttribute('targetPos', new THREE.BufferAttribute(new Float32Array(pos), 3));
+    geometry.setAttribute('targetColor', new THREE.BufferAttribute(new Float32Array(col), 3));
 
     shaderMaterial = new THREE.ShaderMaterial({
         vertexShader,
@@ -116,25 +113,27 @@ export function initPlayground(containerId) {
     points = new THREE.Points(geometry, shaderMaterial);
     scene.add(points);
 
-    // Trigger global Earth background if available
-    if (window.createEarth) window.createEarth(scene);
-    
     animate();
 }
 
 export function morphTo(targetData) {
     if (!geometry || !shaderMaterial) return;
 
+    // Update the "Target" buffers on the GPU
+    // targetData.points and targetData.colors MUST be Float32Arrays from digitizers.js
     geometry.getAttribute('targetPos').copyArray(targetData.points);
     geometry.getAttribute('targetColor').copyArray(targetData.colors);
     geometry.attributes.targetPos.needsUpdate = true;
     geometry.attributes.targetColor.needsUpdate = true;
 
+    // Reset progress and Animate
+    shaderMaterial.uniforms.uProgress.value = 0;
     gsap.to(shaderMaterial.uniforms.uProgress, {
         value: 1,
         duration: 2.2,
         ease: "expo.inOut",
         onComplete: () => {
+            // Once morph is finished, set current position as the new baseline
             geometry.getAttribute('position').copyArray(targetData.points);
             geometry.getAttribute('color').copyArray(targetData.colors);
             geometry.attributes.position.needsUpdate = true;

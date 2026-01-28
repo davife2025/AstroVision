@@ -124,34 +124,50 @@ function App() {
     setImagePreview(null);
   };
 
-  const handleSubmit = async () => {
-    if (!selectedImage && !prompt.trim()) {
-      setError(ERROR_MESSAGES.NO_INPUT);
-      return;
-    }
+ const handleSubmit = async () => {
+  if (!selectedImage && !prompt.trim()) {
+    setError(ERROR_MESSAGES.NO_INPUT);
+    return;
+  }
 
-    setLoading(true);
-    setError('');
-    setLoadingStage('');
+  setLoading(true);
+  setError('');
 
-    try {
+  try {
+    // --- NEW: DIRECT PLAYGROUND ROUTE ---
+    if (activeTab === 'playground') {
       if (selectedImage) {
-        const base64 = await compressImage(selectedImage);
-        await handleDiscoveryPipeline(base64, prompt || 'Analyze this celestial object.');
-      } else {
-        await handleChatOnly(prompt);
+        // Convert the file to a Data URI and send to Playground
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          if (window.loadImageToPlayground) {
+            window.loadImageToPlayground(e.target.result);
+          }
+        };
+        reader.readAsDataURL(selectedImage);
+      } else if (prompt) {
+        window.executeTextMorph(prompt);
       }
-    } catch (err) {
-      console.error('Analysis error:', err);
-      setError(err.message.includes('503') ? ERROR_MESSAGES.MODEL_LOADING : `Error: ${err.message}`);
-    } finally {
       setLoading(false);
-      setLoadingStage('');
+      setPrompt("");
       setSelectedImage(null);
-      setImagePreview(null);
-      setPrompt('');
+      return; // Exit here so it doesn't trigger the AI pipeline
     }
-  };
+
+    // --- EXISTING: AI OBSERVATION ROUTE ---
+    if (selectedImage) {
+      const base64 = await compressImage(selectedImage);
+      await handleDiscoveryPipeline(base64, prompt || 'Analyze this celestial object.');
+    } else {
+      await handleChatOnly(prompt);
+    }
+  } catch (err) {
+    setError(`Pipeline Error: ${err.message}`);
+  } finally {
+    setLoading(false);
+    setPrompt('');
+  }
+};
 
   const handleDiscoveryPipeline = async (base64, userQuestion) => {
     const { visualId, discoveryData, aiText } = await runDiscoveryAnalysis(base64, userQuestion, setLoadingStage);
@@ -284,85 +300,356 @@ function App() {
 
 
 
-
-
-
-
-
-
-
-
 {activeTab === 'playground' && (
-  <div className="playground-wrapper">
-    {/* 1. The HUD Vision/Sensor Panel (Left) */}
-    <div className="hud-glass-panel panel-left animate-hud-float">
-      <div className="panel-header-tag">NEURAL SENSOR LOG</div>
-      <div className="log-content">
-        <p className="log-status-text">{loadingStage || ">>> SYSTEMS STANDBY"}</p>
+  <div style={{ 
+    position: 'relative', 
+    width: '100%', 
+    minHeight: 'calc(100vh - 80px)',
+    overflow: 'hidden'
+  }}>
+    
+    {/* HUD Panel - Left Side */}
+    <div style={{
+      position: 'fixed',
+      top: '100px',
+      left: '20px',
+      width: '280px',
+      background: 'transparent',
+      backdropFilter: 'blur(15px)',
+      border: '1px solid rgba(255, 255, 255, 0.2)',
+      borderRadius: '12px',
+      padding: '20px',
+      zIndex: 9998,
+      pointerEvents: 'auto'
+    }}>
+      <div style={{
+        color: '#00ffcc',
+        fontSize: '11px',
+        fontWeight: '700',
+        letterSpacing: '2px',
+        marginBottom: '15px',
+        fontFamily: 'Courier New, monospace',
+        textShadow: '0 0 10px rgba(0, 255, 204, 0.5)'
+      }}>
+        NEURAL SENSOR LOG
+      </div>
+      <div style={{
+        color: '#ffffff',
+        fontFamily: 'Courier New, monospace',
+        fontSize: '13px'
+      }}>
+        <p style={{ margin: '8px 0', textShadow: '0 2px 4px rgba(0, 0, 0, 0.8)' }}>
+          {loadingStage || ">>> SYSTEMS STANDBY"}
+        </p>
         {handStatus.handCount > 0 && (
-          <p className="log-proximity-text"> PROXIMITY: {handStatus.scale.toFixed(2)}</p>
+          <p style={{ margin: '8px 0', textShadow: '0 2px 4px rgba(0, 0, 0, 0.8)' }}>
+            🔴 PROXIMITY: {handStatus.scale.toFixed(2)}
+          </p>
         )}
       </div>
     </div>
 
-    {/* 2. The Direct Playground Component */}
-    <Playground 
-      onLoadingStage={setLoadingStage} 
-      handStatus={handStatus}
-    />
+    {/* Playground Component - Contained */}
+    <div style={{
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 140, // Increased space for larger console
+      zIndex: 1
+    }}>
+      <Playground 
+        onLoadingStage={setLoadingStage} 
+        handStatus={handStatus}
+      />
+    </div>
 
-    {/* 3. The Interactive Console (Bottom HUD) */}
-    <div className="playground-footer-console">
-       <div className="hud-console-layout">
-<input 
-  type="text" 
-  autoFocus  // Automatically click the box for the user
-  className="hud-input-field"
-  placeholder="COMMENCE TYPING..."
-  value={prompt} 
-  onChange={(e) => {
-    console.log("Typing detected:", e.target.value); // If you don't see this in console, the box is blocked
-    setPlaygroundPrompt(e.target.value);
-  }}
-/>
- <button 
-  className="hud-btn-primary"
-onClick={() => {
-  console.log("Morph button clicked with:", playgroundPrompt);
-  if (typeof window.executeTextMorph === 'function') {
-    window.executeTextMorph(playgroundPrompt);
-    setPlaygroundPrompt(""); // ← Fix capitalization here
-  }
-}}
->
-  MORPH
-</button>
+    {/* Interactive Console - ALWAYS ON TOP */}
+    <div style={{
+      position: 'fixed',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      background: 'transparent',
+      backdropFilter: 'blur(25px)',
+      borderTop: '1px solid rgba(255, 255, 255, 0.15)',
+      padding: '20px',
+      zIndex: 99999,
+      boxShadow: '0 -4px 30px rgba(0, 0, 0, 0.5)'
+    }}>
+      <div style={{
+        maxWidth: '1400px',
+        margin: '0 auto'
+      }}>
+        {/* Main Input Row */}
+        <div style={{
+          display: 'flex',
+          gap: '12px',
+          alignItems: 'center',
+          marginBottom: '15px'
+        }}>
+          <input 
+            type="text"
+            autoFocus
+            value={playgroundPrompt} 
+            onChange={(e) => {
+              console.log("✅ Typing:", e.target.value);
+              setPlaygroundPrompt(e.target.value);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && playgroundPrompt.trim()) {
+                console.log("✅ Enter pressed");
+                if (typeof window.executeTextMorph === 'function') {
+                  window.executeTextMorph(playgroundPrompt);
+                  setPlaygroundPrompt("");
+                }
+              }
+            }}
+            placeholder="COMMENCE TYPING..."
+            style={{
+              flex: 1,
+               background: 'transparent',
+              border: '2px solid rgba(255, 255, 255, 0.3)',
+              color: '#ffffff',
+              padding: '14px 20px',
+              borderRadius: '12px',
+              fontSize: '14px',
+              fontFamily: 'Courier New, monospace',
+              textTransform: 'uppercase',
+              letterSpacing: '1px',
+              transition: 'all 0.3s ease',
+              outline: 'none'
+            }}
+            onFocus={(e) => {
+              e.target.style.borderColor = 'rgba(129, 140, 248, 0.8)';
+              e.target.style.boxShadow = '0 0 25px rgba(129, 140, 248, 0.4)';
+            }}
+            onBlur={(e) => {
+              e.target.style.borderColor = 'rgba(255, 255, 255, 0.3)';
+              e.target.style.boxShadow = 'none';
+            }}
+          />
+          
+          <button 
+            onClick={() => {
+              console.log("✅ MORPH clicked with:", playgroundPrompt);
+              if (!playgroundPrompt.trim()) {
+                setError('Please enter a prompt first');
+                setTimeout(() => setError(''), 3000);
+                return;
+              }
+              if (typeof window.executeTextMorph === 'function') {
+                window.executeTextMorph(playgroundPrompt);
+                setPlaygroundPrompt("");
+              } else {
+                console.error("executeTextMorph not found");
+                setError('Morph function not ready');
+                setTimeout(() => setError(''), 3000);
+              }
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.background = 'rgba(129, 140, 248, 0.5)';
+              e.target.style.transform = 'translateY(-2px)';
+              e.target.style.boxShadow = '0 4px 20px rgba(129, 140, 248, 0.5)';
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.background = 'rgba(129, 140, 248, 0.3)';
+              e.target.style.transform = 'translateY(0)';
+              e.target.style.boxShadow = 'none';
+            }}
+            style={{
+                 background: 'transparent',
+              border: '2px solid rgba(129, 140, 248, 0.6)',
+              color: '#ffffff',
+              padding: '14px 28px',
+              borderRadius: '12px',
+              fontSize: '13px',
+              fontWeight: '600',
+              fontFamily: 'Courier New, monospace',
+              letterSpacing: '1.5px',
+              cursor: 'pointer',
+              transition: 'all 0.3s ease',
+              whiteSpace: 'nowrap',
+              textShadow: '0 2px 8px rgba(0, 0, 0, 0.8)'
+            }}
+          >
+            MORPH
+          </button>
 
-<button 
-  className="hud-btn-secondary"
-  onClick={() => {
-     if (typeof window.activateCameraSensor === 'function') {
-        window.activateCameraSensor();
-     }
-  }}
->
-  ACTIVATE SENSORS
-</button>
-       </div>
+          <button 
+            onClick={() => {
+              console.log("✅ SENSOR clicked");
+              if (typeof window.activateCameraSensor === 'function') {
+                window.activateCameraSensor();
+              } else {
+                console.error("activateCameraSensor not found");
+                setError('Camera sensor not available');
+                setTimeout(() => setError(''), 3000);
+              }
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.background = 'rgba(255, 255, 255, 0.15)';
+              e.target.style.transform = 'translateY(-2px)';
+              e.target.style.boxShadow = '0 4px 20px rgba(255, 255, 255, 0.2)';
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.background = 'rgba(0, 0, 0, 0.8)';
+              e.target.style.transform = 'translateY(0)';
+              e.target.style.boxShadow = 'none';
+            }}
+            style={{
+                 background: 'transparent',
+              border: '2px solid rgba(255, 255, 255, 0.4)',
+              color: '#ffffff',
+              padding: '14px 28px',
+              borderRadius: '12px',
+              fontSize: '13px',
+              fontWeight: '600',
+              fontFamily: 'Courier New, monospace',
+              letterSpacing: '1.5px',
+              cursor: 'pointer',
+              transition: 'all 0.3s ease',
+              whiteSpace: 'nowrap',
+              textShadow: '0 2px 8px rgba(0, 0, 0, 0.8)'
+            }}
+          >
+            ACTIVATE SENSORS
+          </button>
+        </div>
+
+        {/* Controls Row - Color, Size, Image Upload */}
+        <div style={{
+          display: 'flex',
+          gap: '15px',
+          alignItems: 'center',
+          padding: '10px',
+          background: 'rgba(0, 0, 0, 0.5)',
+          borderRadius: '10px',
+          border: '1px solid rgba(255, 255, 255, 0.1)'
+        }}>
+          {/* Color Picker */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <label style={{
+              color: '#ffffff',
+              fontSize: '12px',
+              fontFamily: 'Courier New, monospace',
+              letterSpacing: '1px',
+              textShadow: '0 1px 3px rgba(0, 0, 0, 0.8)'
+            }}>
+              COLOR:
+            </label>
+            <input 
+              type="color"
+              defaultValue="#00ffcc"
+              onChange={(e) => {
+                console.log("Color changed:", e.target.value);
+                if (typeof window.setTextColor === 'function') {
+                  window.setTextColor(e.target.value);
+                }
+              }}
+              style={{
+                width: '50px',
+                height: '35px',
+                border: '2px solid rgba(255, 255, 255, 0.3)',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                background: 'transparent'
+              }}
+            />
+          </div>
+
+          {/* Size Slider */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1 }}>
+            <label style={{
+              color: '#ffffff',
+              fontSize: '12px',
+              fontFamily: 'Courier New, monospace',
+              letterSpacing: '1px',
+              textShadow: '0 1px 3px rgba(0, 0, 0, 0.8)',
+              whiteSpace: 'nowrap'
+            }}>
+              SIZE:
+            </label>
+            <input 
+              type="range"
+              min="10"
+              max="200"
+              defaultValue="50"
+              onChange={(e) => {
+                console.log("Size changed:", e.target.value);
+                if (typeof window.setTextSize === 'function') {
+                  window.setTextSize(parseInt(e.target.value));
+                }
+              }}
+              style={{
+                flex: 1,
+                maxWidth: '200px',
+                height: '6px',
+                borderRadius: '3px',
+                background: 'rgba(255, 255, 255, 0.2)',
+                outline: 'none',
+                cursor: 'pointer'
+              }}
+            />
+          </div>
+
+          {/* Image Upload */}
+          <input 
+            type="file"
+            accept="image/*"
+            onChange={(e) => {
+              const file = e.target.files[0];
+              if (file) {
+                console.log("Image selected:", file.name);
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                  const imageDataUrl = event.target.result;
+                  console.log("Image loaded");
+                  if (typeof window.loadImageToPlayground === 'function') {
+                    window.loadImageToPlayground(imageDataUrl);
+                  }
+                };
+                reader.readAsDataURL(file);
+              }
+            }}
+            style={{ display: 'none' }}
+            id="playground-image-upload"
+          />
+          <label 
+            htmlFor="playground-image-upload"
+            onMouseEnter={(e) => {
+              e.target.style.background = 'rgba(255, 165, 0, 0.4)';
+              e.target.style.transform = 'translateY(-2px)';
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.background = 'rgba(255, 165, 0, 0.2)';
+              e.target.style.transform = 'translateY(0)';
+            }}
+            style={{
+                  background: 'transparent',
+              border: '2px solid rgba(255, 165, 0, 0.5)',
+              color: '#ffffff',
+              padding: '10px 20px',
+              borderRadius: '10px',
+              fontSize: '12px',
+              fontWeight: '600',
+              fontFamily: 'Courier New, monospace',
+              letterSpacing: '1px',
+              cursor: 'pointer',
+              transition: 'all 0.3s ease',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              textShadow: '0 2px 8px rgba(0, 0, 0, 0.8)'
+            }}
+          >
+            UPLOAD IMAGE
+          </label>
+        </div>
+      </div>
     </div>
   </div>
 )}
-
-
-   
-
-
-
-
-
-
-
-
 
 
 
