@@ -1,25 +1,26 @@
-// src/components/DAODashboard.jsx - FIXED VERSION
-
-import React, { useState, useEffect } from 'react';
+// src/components/DAODashboard.jsx
+import React, { useState, useEffect, useCallback } from 'react';
 import { useWeb3 } from '../hooks/useWeb3';
 import { useDAO } from '../hooks/useDao';
 
 const DAODashboard = () => {
-  const { account, connect, disconnect, isConnected, formatAddress } = useWeb3();
+  const { account, connect, disconnect, isConnected, formatAddress, signer } = useWeb3();
   const { 
     userBalance, 
     createProposal, 
     vote, 
-    getActiveProposals, // ✅ Changed from getWeeklyTopics
+    getWeeklyTopics,
+    getTopDiscoveries,
     hasUserVoted,
     loading 
-  } = useDAO();
+  } = useDAO(signer, account);
 
-  const [activeTab, setActiveTab] = useState('all');
-  const [proposals, setProposals] = useState([]);
+  const [activeTab, setActiveTab] = useState('weekly-topics');
+  const [weeklyTopics, setWeeklyTopics] = useState([]);
+  const [discoveries, setDiscoveries] = useState([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [refreshTrigger, setRefreshTrigger] = useState(0); // ✅ Added refresh trigger
 
+  // Proposal form state
   const [proposalForm, setProposalForm] = useState({
     type: 0,
     title: '',
@@ -27,105 +28,75 @@ const DAODashboard = () => {
     ipfsHash: ''
   });
 
-  // ✅ Load ALL proposals
+  // Load proposals - wrapped in useCallback to fix React Hook warning
+  const loadProposals = useCallback(async () => {
+    try {
+      if (activeTab === 'weekly-topics') {
+        const topics = await getWeeklyTopics();
+        setWeeklyTopics(topics || []);
+      } else if (activeTab === 'discoveries') {
+        const topDiscoveries = await getTopDiscoveries(20);
+        setDiscoveries(topDiscoveries || []);
+      }
+    } catch (error) {
+      console.error('Error loading proposals:', error);
+    }
+  }, [activeTab, getWeeklyTopics, getTopDiscoveries]);
+
+  // Load proposals when connected or tab changes
   useEffect(() => {
     if (isConnected) {
       loadProposals();
     }
-  }, [isConnected, activeTab, refreshTrigger]); // ✅ Added refreshTrigger
-
-  const loadProposals = async () => {
-    try {
-      console.log('📊 Loading proposals...');
-      const allProposals = await getActiveProposals(); // ✅ Get all active proposals
-      console.log('✅ Loaded proposals:', allProposals);
-      
-      // Filter by type if needed
-      let filtered = allProposals;
-      if (activeTab === 'weekly-topics') {
-        filtered = allProposals.filter(p => p.proposalType === 2);
-      } else if (activeTab === 'discoveries') {
-        filtered = allProposals.filter(p => p.proposalType === 1);
-      } else if (activeTab === 'knowledge') {
-        filtered = allProposals.filter(p => p.proposalType === 4);
-      }
-      
-      setProposals(filtered);
-    } catch (error) {
-      console.error('❌ Error loading proposals:', error);
-    }
-  };
+  }, [isConnected, loadProposals]);
 
   const handleCreateProposal = async (e) => {
     e.preventDefault();
     
     try {
-      console.log('📝 Creating proposal...');
       const proposalId = await createProposal(
         proposalForm.type,
         proposalForm.title,
         proposalForm.description,
-        proposalForm.ipfsHash || ''
+        proposalForm.ipfsHash
       );
       
-      console.log('✅ Proposal created! ID:', proposalId);
       alert(`Proposal created successfully! ID: ${proposalId}`);
-      
-      // ✅ Close modal and reset form
       setShowCreateModal(false);
       setProposalForm({ type: 0, title: '', description: '', ipfsHash: '' });
-      
-      // ✅ Trigger reload
-      setRefreshTrigger(prev => prev + 1);
-      
-      // ✅ Also manually reload after a delay
-      setTimeout(() => {
-        loadProposals();
-      }, 2000);
-      
+      loadProposals();
     } catch (error) {
-      console.error('❌ Create proposal error:', error);
       alert('Failed to create proposal: ' + error.message);
     }
   };
 
   const handleVote = async (proposalId, support) => {
     try {
-      console.log('🗳️ Voting on proposal:', proposalId, 'Support:', support);
-      
-      // Check if already voted
-      const voted = await hasUserVoted(proposalId);
-      if (voted) {
+      const hasVoted = await hasUserVoted(proposalId);
+      if (hasVoted) {
         alert('You have already voted on this proposal');
         return;
       }
 
-      // Vote (1 = FOR, 2 = AGAINST)
-      await vote(proposalId, support ? 1 : 2);
+      await vote(proposalId, support);
       alert('Vote submitted successfully!');
-      
-      // ✅ Trigger reload
-      setRefreshTrigger(prev => prev + 1);
-      
+      loadProposals();
     } catch (error) {
-      console.error('❌ Vote error:', error);
       alert('Failed to vote: ' + error.message);
     }
   };
 
   const ProposalCard = ({ proposal }) => {
-    const totalVotes = parseFloat(proposal.votesFor || 0) + parseFloat(proposal.votesAgainst || 0);
+    const totalVotes = parseFloat(proposal.votesFor) + parseFloat(proposal.votesAgainst);
     const forPercentage = totalVotes > 0 
-      ? ((parseFloat(proposal.votesFor || 0) / totalVotes) * 100).toFixed(1)
-      : 50;
+      ? ((parseFloat(proposal.votesFor) / totalVotes) * 100).toFixed(1)
+      : 0;
 
     const getStatusColor = (status) => {
       switch(status) {
-        case 0: return '#ffa500'; // PENDING
         case 1: return '#00ffcc'; // ACTIVE
         case 2: return '#00ff00'; // PASSED
         case 3: return '#ff0000'; // REJECTED
-        case 4: return '#888'; // EXECUTED
         default: return '#666';
       }
     };
@@ -141,23 +112,6 @@ const DAODashboard = () => {
       }
     };
 
-    const getProposalTypeText = (type) => {
-      switch(type) {
-        case 0: return 'Governance';
-        case 1: return 'Discovery';
-        case 2: return 'Weekly Topic';
-        case 3: return 'Grant';
-        case 4: return 'Knowledge Share';
-        case 5: return 'Partnership';
-        default: return 'General';
-      }
-    };
-
-    // ✅ Check if voting is active
-    const isVotingActive = proposal.status === 1 && 
-                          proposal.endTime && 
-                          new Date(proposal.endTime * 1000) > new Date();
-
     return (
       <div style={{
         background: 'rgba(0, 255, 204, 0.05)',
@@ -167,35 +121,20 @@ const DAODashboard = () => {
         marginBottom: '16px'
       }}>
         <div style={{ marginBottom: '16px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-            <div>
-              <div style={{ 
-                fontSize: '12px', 
-                color: '#888', 
-                marginBottom: '4px',
-                textTransform: 'uppercase'
-              }}>
-                {getProposalTypeText(proposal.proposalType)}
-              </div>
-              <h3 style={{ color: '#00ffcc', margin: '0 0 8px 0' }}>{proposal.title}</h3>
-            </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3 style={{ color: '#00ffcc', margin: '0 0 8px 0' }}>{proposal.title}</h3>
             <span style={{ 
               color: getStatusColor(proposal.status),
               fontSize: '12px',
-              fontWeight: 'bold',
-              padding: '4px 12px',
-              background: `${getStatusColor(proposal.status)}20`,
-              borderRadius: '4px'
+              fontWeight: 'bold'
             }}>
               {getStatusText(proposal.status)}
             </span>
           </div>
-          
-          <p style={{ color: '#ccc', fontSize: '14px', margin: '8px 0', lineHeight: '1.6' }}>
+          <p style={{ color: '#ccc', fontSize: '14px', margin: '8px 0' }}>
             {proposal.description}
           </p>
-          
-          <div style={{ fontSize: '12px', color: '#888', marginTop: '8px' }}>
+          <div style={{ fontSize: '12px', color: '#888' }}>
             Proposed by: {formatAddress(proposal.proposer)}
           </div>
         </div>
@@ -204,10 +143,10 @@ const DAODashboard = () => {
         <div style={{ marginBottom: '16px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
             <span style={{ color: '#00ff00', fontSize: '14px' }}>
-              ✓ For: {proposal.votesFor || '0'} ({forPercentage}%)
+              For: {proposal.votesFor} ({forPercentage}%)
             </span>
             <span style={{ color: '#ff0000', fontSize: '14px' }}>
-              ✗ Against: {proposal.votesAgainst || '0'} ({(100 - forPercentage).toFixed(1)}%)
+              Against: {proposal.votesAgainst} ({(100 - forPercentage).toFixed(1)}%)
             </span>
           </div>
           
@@ -227,27 +166,25 @@ const DAODashboard = () => {
           </div>
         </div>
 
-        {/* ✅ ALWAYS SHOW VOTE BUTTONS for active proposals */}
-        {isVotingActive && (
-          <div style={{ display: 'flex', gap: '12px', marginBottom: '12px' }}>
+        {/* Vote Buttons */}
+        {proposal.status === 1 && (
+          <div style={{ display: 'flex', gap: '12px' }}>
             <button
               onClick={() => handleVote(proposal.id, true)}
               disabled={loading}
               style={{
                 flex: 1,
                 padding: '12px',
-                background: loading ? '#666' : 'linear-gradient(135deg, #00ff00, #00cc00)',
+                background: 'linear-gradient(135deg, #00ff00, #00cc00)',
                 border: 'none',
                 borderRadius: '8px',
-                color: loading ? '#ccc' : '#000',
+                color: '#000',
                 fontWeight: 'bold',
                 cursor: loading ? 'not-allowed' : 'pointer',
-                transition: 'all 0.2s'
+                opacity: loading ? 0.6 : 1
               }}
-              onMouseEnter={(e) => !loading && (e.target.style.transform = 'scale(1.02)')}
-              onMouseLeave={(e) => !loading && (e.target.style.transform = 'scale(1)')}
             >
-              {loading ? 'Voting...' : '✓ Vote FOR'}
+              {loading ? 'Voting...' : 'Vote FOR'}
             </button>
             <button
               onClick={() => handleVote(proposal.id, false)}
@@ -255,46 +192,23 @@ const DAODashboard = () => {
               style={{
                 flex: 1,
                 padding: '12px',
-                background: loading ? '#666' : 'linear-gradient(135deg, #ff0000, #cc0000)',
+                background: 'linear-gradient(135deg, #ff0000, #cc0000)',
                 border: 'none',
                 borderRadius: '8px',
                 color: '#fff',
                 fontWeight: 'bold',
                 cursor: loading ? 'not-allowed' : 'pointer',
-                transition: 'all 0.2s'
+                opacity: loading ? 0.6 : 1
               }}
-              onMouseEnter={(e) => !loading && (e.target.style.transform = 'scale(1.02)')}
-              onMouseLeave={(e) => !loading && (e.target.style.transform = 'scale(1)')}
             >
-              {loading ? 'Voting...' : '✗ Vote AGAINST'}
+              {loading ? 'Voting...' : 'Vote AGAINST'}
             </button>
           </div>
         )}
 
-        {/* Voting ended message */}
-        {proposal.status === 1 && !isVotingActive && (
-          <div style={{
-            padding: '12px',
-            background: 'rgba(255, 165, 0, 0.1)',
-            border: '1px solid rgba(255, 165, 0, 0.3)',
-            borderRadius: '8px',
-            color: '#ffa500',
-            fontSize: '14px',
-            textAlign: 'center',
-            marginBottom: '12px'
-          }}>
-            Voting has ended
-          </div>
-        )}
-
-        {/* Timestamp */}
         {proposal.endTime && (
-          <div style={{ fontSize: '12px', color: '#888' }}>
-            {isVotingActive ? (
-              <>⏰ Voting ends: {new Date(proposal.endTime * 1000).toLocaleString()}</>
-            ) : (
-              <>🔒 Voting ended: {new Date(proposal.endTime * 1000).toLocaleString()}</>
-            )}
+          <div style={{ marginTop: '12px', fontSize: '12px', color: '#888' }}>
+            Voting ends: {proposal.endTime.toLocaleString()}
           </div>
         )}
       </div>
@@ -309,7 +223,10 @@ const DAODashboard = () => {
       color: '#fff'
     }}>
       {/* Header */}
-      <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+      <div style={{
+        textAlign: 'center',
+        marginBottom: '40px'
+      }}>
         <h1 style={{
           fontSize: '48px',
           background: 'linear-gradient(135deg, #00ffcc, #00ff00)',
@@ -317,7 +234,7 @@ const DAODashboard = () => {
           WebkitTextFillColor: 'transparent',
           marginBottom: '16px'
         }}>
-          🌌 DeSci DAO Governance
+          Astro DAO Governance
         </h1>
         <p style={{ color: '#ccc', fontSize: '18px' }}>
           Community-driven scientific discovery and knowledge sharing
@@ -334,7 +251,7 @@ const DAODashboard = () => {
           border: '2px dashed rgba(0, 255, 204, 0.3)'
         }}>
           <h2 style={{ color: '#00ffcc', marginBottom: '24px' }}>
-            🔐 Connect Your Wallet
+            Connect Your Wallet
           </h2>
           <p style={{ color: '#ccc', marginBottom: '32px' }}>
             Connect your wallet to participate in DAO governance
@@ -382,7 +299,7 @@ const DAODashboard = () => {
                 Voting Power
               </div>
               <div style={{ fontSize: '18px', color: '#00ff00', fontWeight: 'bold' }}>
-                {parseFloat(userBalance || 0).toFixed(2)} ASTRO
+                {parseFloat(userBalance).toFixed(2)} ASTRO
               </div>
             </div>
             <button
@@ -410,17 +327,13 @@ const DAODashboard = () => {
             flexWrap: 'wrap'
           }}>
             {[
-              { id: 'all', label: '📋 All Proposals' },
-              { id: 'weekly-topics', label: '📅 Weekly Topics' },
-              { id: 'discoveries', label: '🔬 Discoveries' },
-              { id: 'knowledge', label: '📚 Knowledge' }
+              { id: 'weekly-topics', label: 'Weekly Topics' },
+              { id: 'discoveries', label: 'Scientific Discoveries' },
+              { id: 'knowledge', label: 'Knowledge Sharing' }
             ].map(tab => (
               <button
                 key={tab.id}
-                onClick={() => {
-                  setActiveTab(tab.id);
-                  setRefreshTrigger(prev => prev + 1);
-                }}
+                onClick={() => setActiveTab(tab.id)}
                 style={{
                   padding: '12px 24px',
                   background: activeTab === tab.id ? 'rgba(0, 255, 204, 0.2)' : 'transparent',
@@ -428,8 +341,7 @@ const DAODashboard = () => {
                   borderRadius: '8px',
                   color: activeTab === tab.id ? '#00ffcc' : '#888',
                   cursor: 'pointer',
-                  fontWeight: activeTab === tab.id ? 'bold' : 'normal',
-                  transition: 'all 0.2s'
+                  fontWeight: activeTab === tab.id ? 'bold' : 'normal'
                 }}
               >
                 {tab.label}
@@ -452,25 +364,33 @@ const DAODashboard = () => {
               cursor: 'pointer'
             }}
           >
-            ✨ Create New Proposal
+            + Create New Proposal
           </button>
 
           {/* Proposals List */}
           <div>
-            {loading && proposals.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px', color: '#888' }}>
-                Loading proposals...
-              </div>
-            ) : proposals.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px' }}>
-                <p style={{ color: '#888', fontSize: '18px' }}>
-                  No proposals found. Create the first one!
-                </p>
-              </div>
-            ) : (
-              proposals.map(proposal => (
+            {activeTab === 'weekly-topics' && weeklyTopics.length > 0 && 
+              weeklyTopics.map(proposal => (
                 <ProposalCard key={proposal.id} proposal={proposal} />
               ))
+            }
+            {activeTab === 'discoveries' && discoveries.length > 0 && 
+              discoveries.map(proposal => (
+                <ProposalCard key={proposal.id} proposal={proposal} />
+              ))
+            }
+            {((activeTab === 'weekly-topics' && weeklyTopics.length === 0) ||
+              (activeTab === 'discoveries' && discoveries.length === 0)) && (
+              <div style={{
+                padding: '60px 20px',
+                textAlign: 'center',
+                background: 'rgba(0, 255, 204, 0.05)',
+                border: '1px dashed rgba(0, 255, 204, 0.3)',
+                borderRadius: '12px',
+                color: '#888'
+              }}>
+                No proposals yet. Be the first to create one!
+              </div>
             )}
           </div>
         </>
@@ -484,12 +404,11 @@ const DAODashboard = () => {
           left: 0,
           right: 0,
           bottom: 0,
-          background: 'rgba(0, 0, 0, 0.9)',
+          background: 'rgba(0, 0, 0, 0.8)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          zIndex: 1000,
-          padding: '20px'
+          zIndex: 1000
         }}
         onClick={() => setShowCreateModal(false)}
         >
@@ -498,15 +417,13 @@ const DAODashboard = () => {
             borderRadius: '16px',
             padding: '32px',
             maxWidth: '600px',
-            width: '100%',
-            border: '1px solid rgba(0, 255, 204, 0.3)',
-            maxHeight: '90vh',
-            overflowY: 'auto'
+            width: '90%',
+            border: '1px solid rgba(0, 255, 204, 0.3)'
           }}
           onClick={(e) => e.stopPropagation()}
           >
             <h2 style={{ color: '#00ffcc', marginBottom: '24px' }}>
-              ✨ Create New Proposal
+              Create New Proposal
             </h2>
             
             <form onSubmit={handleCreateProposal}>
@@ -523,29 +440,26 @@ const DAODashboard = () => {
                     background: '#333',
                     border: '1px solid rgba(0, 255, 204, 0.3)',
                     borderRadius: '8px',
-                    color: '#fff',
-                    cursor: 'pointer'
+                    color: '#fff'
                   }}
                 >
-                  <option value={0}>🏛️ Governance</option>
-                  <option value={1}>🔬 Scientific Discovery</option>
-                  <option value={2}>📅 Weekly Topic</option>
-                  <option value={3}>💰 Research Grant</option>
-                  <option value={4}>📚 Knowledge Sharing</option>
-                  <option value={5}>🤝 Partnership</option>
+                  <option value={0}>Weekly Topic</option>
+                  <option value={1}>Scientific Discovery</option>
+                  <option value={2}>Knowledge Sharing</option>
+                  <option value={3}>Funding</option>
+                  <option value={4}>General</option>
                 </select>
               </div>
 
               <div style={{ marginBottom: '20px' }}>
                 <label style={{ display: 'block', marginBottom: '8px', color: '#ccc' }}>
-                  Title *
+                  Title
                 </label>
                 <input
                   type="text"
                   value={proposalForm.title}
                   onChange={(e) => setProposalForm({ ...proposalForm, title: e.target.value })}
                   required
-                  placeholder="Enter proposal title..."
                   style={{
                     width: '100%',
                     padding: '12px',
@@ -559,14 +473,13 @@ const DAODashboard = () => {
 
               <div style={{ marginBottom: '20px' }}>
                 <label style={{ display: 'block', marginBottom: '8px', color: '#ccc' }}>
-                  Description *
+                  Description
                 </label>
                 <textarea
                   value={proposalForm.description}
                   onChange={(e) => setProposalForm({ ...proposalForm, description: e.target.value })}
                   required
-                  rows={6}
-                  placeholder="Describe your proposal in detail..."
+                  rows={4}
                   style={{
                     width: '100%',
                     padding: '12px',
@@ -574,8 +487,7 @@ const DAODashboard = () => {
                     border: '1px solid rgba(0, 255, 204, 0.3)',
                     borderRadius: '8px',
                     color: '#fff',
-                    resize: 'vertical',
-                    fontFamily: 'inherit'
+                    resize: 'vertical'
                   }}
                 />
               </div>
@@ -586,31 +498,30 @@ const DAODashboard = () => {
                   disabled={loading}
                   style={{
                     flex: 1,
-                    padding: '14px',
-                    background: loading ? '#666' : 'linear-gradient(135deg, #00ffcc, #00ff00)',
+                    padding: '12px',
+                    background: loading 
+                      ? 'rgba(0, 255, 204, 0.3)' 
+                      : 'linear-gradient(135deg, #00ffcc, #00ff00)',
                     border: 'none',
                     borderRadius: '8px',
-                    color: loading ? '#ccc' : '#000',
+                    color: loading ? '#666' : '#000',
                     fontWeight: 'bold',
-                    cursor: loading ? 'not-allowed' : 'pointer',
-                    fontSize: '16px'
+                    cursor: loading ? 'not-allowed' : 'pointer'
                   }}
                 >
-                  {loading ? '⏳ Creating...' : '✅ Create Proposal'}
+                  {loading ? 'Creating...' : 'Create Proposal'}
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}
-                  disabled={loading}
                   style={{
                     flex: 1,
-                    padding: '14px',
+                    padding: '12px',
                     background: 'transparent',
                     border: '1px solid #666',
                     borderRadius: '8px',
                     color: '#666',
-                    cursor: loading ? 'not-allowed' : 'pointer',
-                    fontSize: '16px'
+                    cursor: 'pointer'
                   }}
                 >
                   Cancel
