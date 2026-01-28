@@ -12,6 +12,7 @@ import SignIn from './pages/signin';
 import DAO from './pages/dao';
 import SpaceBackground from './components/spaceBackground';
 import Playground from './pages/playground';
+import DAODashboard from './components/daoDashboard';
 
 // Services
 import { runDiscoveryAnalysis, chatWithAstroSage } from './services/aiServices';
@@ -228,6 +229,7 @@ function App() {
 
                     <button onClick={() => setActiveTab('home')} className={`nav-button desktop-nav-btn ${activeTab === 'home' ? 'active' : ''}`}> Observation</button>
                     <button onClick={() => setActiveTab('avdao')} className={`nav-button desktop-nav-btn ${activeTab === 'avdao' ? 'active' : ''}`}> Community</button>
+                    <button onClick={() => setActiveTab('daodashboard')} className={`nav-button desktop-nav-btn ${activeTab === 'daodashboard' ? 'active' : ''}`}>Vote</button>
                     <button onClick={() => setActiveTab('space')} className={`nav-button desktop-nav-btn ${activeTab === 'space' ? 'active' : ''}`}> Space Lab</button>
                     <button onClick={() => setActiveTab('playground')} className={`nav-button desktop-nav-btn ${activeTab === 'playground' ? 'active' : ''}`}> Playground</button>
                     <button onClick={() => setActiveTab('mars')} className={`nav-button desktop-nav-btn ${activeTab === 'mars' ? 'active' : ''}`}> Mars</button>
@@ -272,6 +274,9 @@ function App() {
               <span></span> Community
             </button>
             <button onClick={() => handleTabChange('space')} className={`menu-item ${activeTab === 'space' ? 'active' : ''}`}>
+              <span></span> Vote
+            </button>
+            <button onClick={() => handleTabChange('space')} className={`menu-item ${activeTab === 'space' ? 'active' : ''}`}>
               <span></span> Space Lab
             </button>
             <button onClick={() => handleTabChange('playground')} className={`menu-item ${activeTab === 'playground' ? 'active' : ''}`}>
@@ -296,6 +301,22 @@ function App() {
       {activeTab === 'home' && <ObservationTab responses={responses} loading={loading} loadingStage={loadingStage} />}
       {activeTab === 'space' && <SpaceSimulation handTrackingEnabled={handTrackingEnabled} handStatus={handStatus} onToggleHandTracking={toggleHandTracking} selectedShape={selectedShape} shapes={shapes} onShapeChange={changeShape} loading={loading} loadingStage={loadingStage} />}
       {activeTab === 'avdao' && <DAO onViewProfile={openProfile} />}
+      {activeTab === 'daodashboard' && <DAODashboard/>}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -650,16 +671,6 @@ function App() {
     </div>
   </div>
 )}
-
-
-
-
-
-
-
-
-
-
 
 
 
