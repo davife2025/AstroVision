@@ -1,63 +1,105 @@
+// scripts/deploy-simple.js
 const hre = require("hardhat");
 
 async function main() {
-  console.log("🚀 Deploying AstroDAO...");
+  console.log("🚀 Deploying Simplified AstroDAO to BNB Chain...\n");
 
-  // You need to either:
-  // 1. Deploy a governance token first, OR
-  // 2. Use an existing token address
+  const [deployer] = await hre.ethers.getSigners();
+  console.log("📝 Deploying with account:", deployer.address);
   
-  // Option 1: Deploy a simple governance token first (recommended for testing)
-  console.log("📝 Deploying Governance Token first...");
-  const AstroToken = await hre.ethers.getContractFactory("AstroToken");
-  const token = await AstroToken.deploy();
-  await token.waitForDeployment();
-  const tokenAddress = await token.getAddress();
-  console.log("✅ AstroToken deployed to:", tokenAddress);
+  const balance = await hre.ethers.provider.getBalance(deployer.address);
+  console.log("💰 Account balance:", hre.ethers.formatEther(balance), "BNB\n");
 
-  // Option 2: Use existing token (uncomment and replace address)
-  // const tokenAddress = "0xYourExistingTokenAddress";
+  // Deploy AstroDAO (no token needed!)
+  console.log("1️⃣ Deploying AstroDAO...");
   
-  console.log("📝 Deploying AstroDAO...");
   const AstroDAO = await hre.ethers.getContractFactory("AstroDAO");
-  const dao = await AstroDAO.deploy(tokenAddress);
-
+  const dao = await AstroDAO.deploy();
   await dao.waitForDeployment();
-
+  
   const daoAddress = await dao.getAddress();
   console.log("✅ AstroDAO deployed to:", daoAddress);
-  console.log("📝 Add these to your .env:");
-  console.log(`REACT_APP_DAO_CONTRACT_ADDRESS=${daoAddress}`);
-  console.log(`REACT_APP_TOKEN_CONTRACT_ADDRESS=${tokenAddress}`);
+  console.log("");
+
+  // Verify deployment
+  console.log("2️⃣ Verifying deployment...");
+  const proposalCount = await dao.proposalCount();
+  const votingPeriod = await dao.votingPeriod();
   
-  // Wait for block confirmations
-  console.log("⏳ Waiting for block confirmations...");
-  await dao.deploymentTransaction().wait(5);
-  
-  // Verify on BscScan
-  console.log("🔍 Verifying contracts on BscScan...");
-  
+  console.log("✅ Proposal Count:", proposalCount.toString());
+  console.log("✅ Voting Period:", votingPeriod.toString(), "seconds (", Number(votingPeriod) / 86400, "days)");
+  console.log("");
+
+  // Create test proposal
+  console.log("3️⃣ Creating test proposal...");
   try {
-    await hre.run("verify:verify", {
-      address: tokenAddress,
-      constructorArguments: []
-    });
-    console.log("✅ Token verified!");
+    const tx = await dao.createProposal(
+      0, // WEEKLY_TOPIC
+      "Should we discuss Quantum Computing this week?",
+      "Quantum computing has potential applications in drug discovery and climate modeling.",
+      "" // No IPFS hash
+    );
+    await tx.wait();
+    console.log("✅ Test proposal created!");
   } catch (error) {
-    console.log("⚠️  Token verification failed:", error.message);
+    console.log("⚠️  Could not create test proposal:", error.message);
   }
-  
-  try {
-    await hre.run("verify:verify", {
-      address: daoAddress,
-      constructorArguments: [tokenAddress]
-    });
-    console.log("✅ DAO verified!");
-  } catch (error) {
-    console.log("⚠️  DAO verification failed:", error.message);
+  console.log("");
+
+  // Save deployment info
+  const deploymentInfo = {
+    network: hre.network.name,
+    deployer: deployer.address,
+    timestamp: new Date().toISOString(),
+    contract: {
+      AstroDAO: {
+        address: daoAddress,
+        votingPeriod: votingPeriod.toString(),
+        quorum: "10%"
+      }
+    }
+  };
+
+  console.log("📄 Deployment Summary:");
+  console.log("=====================================");
+  console.log(JSON.stringify(deploymentInfo, null, 2));
+  console.log("=====================================\n");
+
+  console.log("⚠️  IMPORTANT: Update your .env file!");
+  console.log("   REACT_APP_DAO_CONTRACT_ADDRESS=" + daoAddress);
+  console.log("");
+
+  console.log("📋 Next Steps:");
+  console.log("1. Copy the contract address above");
+  console.log("2. Add to .env: REACT_APP_DAO_CONTRACT_ADDRESS=" + daoAddress);
+  console.log("3. Restart your dev server: npm start");
+  console.log("4. Connect wallet and start voting!");
+  console.log("");
+
+  // Save to file
+  const fs = require('fs');
+  fs.writeFileSync(
+    'deployment-simple.json',
+    JSON.stringify(deploymentInfo, null, 2)
+  );
+  console.log("✅ Deployment info saved to deployment-simple.json");
+
+  // Verify on BSCScan if on testnet
+  if (hre.network.name === "bscTestnet") {
+    console.log("\n⏳ Waiting for block confirmations before verification...");
+    await dao.deploymentTransaction().wait(6);
+    
+    console.log("\n4️⃣ Verifying contract on BSCScan...");
+    try {
+      await hre.run("verify:verify", {
+        address: daoAddress,
+        constructorArguments: [],
+      });
+      console.log("✅ Contract verified on BSCScan!");
+    } catch (error) {
+      console.log("⚠️  Verification failed:", error.message);
+    }
   }
-  
-  console.log("✅ Deployment complete!");
 }
 
 main()

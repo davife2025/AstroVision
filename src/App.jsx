@@ -14,6 +14,7 @@ import SpaceBackground from './components/spaceBackground';
 import Playground from './pages/playground';
 import DAODashboard from './components/daoDashboard';
 
+
 // Services
 import { runDiscoveryAnalysis, chatWithAstroSage } from './services/aiServices';
 import { compressImage, createPreviewURL, validateImageFile } from './services/imageServices';
@@ -21,6 +22,7 @@ import { compressImage, createPreviewURL, validateImageFile } from './services/i
 // Hooks
 import { useHandTracking } from './hooks/useHandTracking';
 import { useSpaceSimulation } from './hooks/useSpaceSimulation';
+
 
 // Utils
 import { cleanAIResponse } from './utils/helpers';
@@ -45,6 +47,7 @@ function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [playgroundPrompt, setPlaygroundPrompt] = useState(''); // ← ADD HERE
+ 
 
 
   const fileInputRef = useRef(null);
@@ -69,6 +72,7 @@ function App() {
     setAuthChecked(true);
   }, []);
 
+  
   const { handTrackingEnabled, handStatus, toggleHandTracking } = useHandTracking();
 
   const handleAutoScan = async (base64) => {
@@ -174,15 +178,15 @@ function App() {
     const { visualId, discoveryData, aiText } = await runDiscoveryAnalysis(base64, userQuestion, setLoadingStage);
     const cleanedResponse = cleanAIResponse(aiText);
     updateSimulationFromAI(aiText, discoveryData.type);
-
-    setResponses((prev) => [{
-      prompt: userQuestion,
-      response: cleanedResponse,
-      image: `data:image/jpeg;base64,${base64}`,
-      nasaImage: discoveryData.historicalImage,
-      vlmId: visualId,
-      coords: discoveryData.coords,
-    }, ...prev]);
+    
+    setResponses((prev) => [...prev, {
+  prompt: userQuestion,
+  response: cleanedResponse,
+  image: `data:image/jpeg;base64,${base64}`,
+  nasaImage: discoveryData.historicalImage,
+  vlmId: visualId,
+  coords: discoveryData.coords,
+}]);
   };
 
   const handleChatOnly = async (text) => {
@@ -233,6 +237,7 @@ function App() {
                     <button onClick={() => setActiveTab('space')} className={`nav-button desktop-nav-btn ${activeTab === 'space' ? 'active' : ''}`}> Space Lab</button>
                     <button onClick={() => setActiveTab('playground')} className={`nav-button desktop-nav-btn ${activeTab === 'playground' ? 'active' : ''}`}> Playground</button>
                     <button onClick={() => setActiveTab('mars')} className={`nav-button desktop-nav-btn ${activeTab === 'mars' ? 'active' : ''}`}> Mars</button>
+    
                   </div>
                 </div>
               </header>
@@ -273,7 +278,7 @@ function App() {
             <button onClick={() => handleTabChange('avdao')} className={`menu-item ${activeTab === 'avdao' ? 'active' : ''}`}>
               <span></span> Community
             </button>
-            <button onClick={() => handleTabChange('space')} className={`menu-item ${activeTab === 'space' ? 'active' : ''}`}>
+            <button onClick={() => handleTabChange('daodashboard')} className={`menu-item ${activeTab === 'daodashboard' ? 'active' : ''}`}>
               <span></span> Vote
             </button>
             <button onClick={() => handleTabChange('space')} className={`menu-item ${activeTab === 'space' ? 'active' : ''}`}>
@@ -285,6 +290,8 @@ function App() {
             <button onClick={() => handleTabChange('mars')} className={`menu-item ${activeTab === 'mars' ? 'active' : ''}`}>
               <span></span> Mars
             </button>
+  
+            
 
             {isAuthenticated && (
               <>
@@ -702,6 +709,10 @@ function App() {
       )}
 
       {showProfile && <Profile profileUserId={viewingUserId} onClose={closeProfile} />}
+
+
+
+
     </div>
   );
 }

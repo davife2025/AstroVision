@@ -5,7 +5,7 @@ import { formatCoordinates } from '../utils/helpers';
 
 const ResponseCard = ({ item, index }) => {
   return (
-    <div key={index} className="response-card animate-fade">
+    <div className="response-card animate-fade">
       <div className="comparison-view">
         <div className="img-box">
           <p>Detected:</p>
@@ -32,7 +32,7 @@ const ResponseCard = ({ item, index }) => {
       )}
 
       <div className="response-text">
-        <strong>AstroSage:</strong> {item.response}
+        <strong>AstroVision:</strong> {item.response}
       </div>
 
       {item.prompt && (

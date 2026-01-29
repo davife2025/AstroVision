@@ -1,18 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 /**
  * @title AstroDAO
- * @dev Decentralized Science DAO for community governance and voting
+ * @dev Simplified Decentralized Science DAO for community governance and voting
+ * No token requirements - anyone can create proposals and vote
  */
 contract AstroDAO is Ownable, ReentrancyGuard {
-    
-    // Governance Token
-    IERC20 public governanceToken;
     
     // Proposal types
     enum ProposalType {
@@ -45,7 +42,6 @@ contract AstroDAO is Ownable, ReentrancyGuard {
         ProposalStatus status;
         bool executed;
         mapping(address => bool) hasVoted;
-        mapping(address => uint256) voteWeight;
     }
     
     struct ScientificDiscovery {
@@ -59,16 +55,19 @@ contract AstroDAO is Ownable, ReentrancyGuard {
     
     // State variables
     uint256 public proposalCount;
-    uint256 public minTokensToPropose = 100 * 10**18;
     uint256 public votingPeriod = 7 days;
-    uint256 public quorumPercentage = 10;
+    uint256 public quorumPercentage = 10; // 10% of total voters needed
     
     mapping(uint256 => Proposal) public proposals;
     mapping(uint256 => ScientificDiscovery) public discoveries;
+    mapping(uint256 => address[]) public proposalVoters; // Track voters per proposal
     
     uint256[] public weeklyTopicProposals;
     uint256[] public discoveryProposals;
     uint256[] public knowledgeSharingProposals;
+    
+    address[] public allVoters; // Track all unique voters
+    mapping(address => bool) public hasVotedEver; // Track if address has ever voted
     
     // Events
     event ProposalCreated(
@@ -81,8 +80,7 @@ contract AstroDAO is Ownable, ReentrancyGuard {
     event VoteCast(
         uint256 indexed proposalId,
         address indexed voter,
-        bool support,
-        uint256 weight
+        bool support
     );
     
     event ProposalExecuted(uint256 indexed proposalId);
@@ -93,13 +91,13 @@ contract AstroDAO is Ownable, ReentrancyGuard {
         string researcher
     );
     
-    // Constructor - Fixed for OpenZeppelin v5
-    constructor(address _governanceToken) Ownable(msg.sender) {
-        governanceToken = IERC20(_governanceToken);
+    // Constructor
+    constructor() Ownable(msg.sender) {
+        // No governance token needed
     }
     
     /**
-     * @dev Create a new proposal
+     * @dev Create a new proposal - NO TOKEN REQUIRED
      */
     function createProposal(
         ProposalType _type,
@@ -107,10 +105,7 @@ contract AstroDAO is Ownable, ReentrancyGuard {
         string memory _description,
         string memory _ipfsHash
     ) public returns (uint256) {
-        require(
-            governanceToken.balanceOf(msg.sender) >= minTokensToPropose,
-            "Insufficient tokens to propose"
-        );
+        // No token requirement - anyone can create a proposal!
         
         proposalCount++;
         uint256 proposalId = proposalCount;
@@ -171,7 +166,7 @@ contract AstroDAO is Ownable, ReentrancyGuard {
     }
     
     /**
-     * @dev Cast a vote on a proposal
+     * @dev Cast a vote on a proposal - ONE VOTE PER ADDRESS
      */
     function vote(uint256 _proposalId, bool _support) external {
         Proposal storage proposal = proposals[_proposalId];
@@ -181,16 +176,23 @@ contract AstroDAO is Ownable, ReentrancyGuard {
         require(!proposal.hasVoted[msg.sender], "Already voted");
         require(proposal.status == ProposalStatus.ACTIVE, "Proposal not active");
         
-        uint256 voterBalance = governanceToken.balanceOf(msg.sender);
-        require(voterBalance > 0, "No voting power");
-        
+        // Mark as voted
         proposal.hasVoted[msg.sender] = true;
-        proposal.voteWeight[msg.sender] = voterBalance;
         
+        // Track voter
+        proposalVoters[_proposalId].push(msg.sender);
+        
+        // Track unique voter (for quorum calculation)
+        if (!hasVotedEver[msg.sender]) {
+            hasVotedEver[msg.sender] = true;
+            allVoters.push(msg.sender);
+        }
+        
+        // Count vote (1 wallet = 1 vote)
         if (_support) {
-            proposal.votesFor += voterBalance;
+            proposal.votesFor += 1;
         } else {
-            proposal.votesAgainst += voterBalance;
+            proposal.votesAgainst += 1;
         }
         
         // Update discovery score if applicable
@@ -198,7 +200,7 @@ contract AstroDAO is Ownable, ReentrancyGuard {
             discoveries[_proposalId].votingScore = proposal.votesFor;
         }
         
-        emit VoteCast(_proposalId, msg.sender, _support, voterBalance);
+        emit VoteCast(_proposalId, msg.sender, _support);
     }
     
     /**
@@ -212,10 +214,9 @@ contract AstroDAO is Ownable, ReentrancyGuard {
         require(proposal.status == ProposalStatus.ACTIVE, "Already finalized");
         
         uint256 totalVotes = proposal.votesFor + proposal.votesAgainst;
-        uint256 totalSupply = governanceToken.totalSupply();
-        uint256 quorum = (totalSupply * quorumPercentage) / 100;
         
-        if (totalVotes >= quorum && proposal.votesFor > proposal.votesAgainst) {
+        // Simple majority wins
+        if (totalVotes > 0 && proposal.votesFor > proposal.votesAgainst) {
             proposal.status = ProposalStatus.PASSED;
         } else {
             proposal.status = ProposalStatus.REJECTED;
@@ -261,17 +262,22 @@ contract AstroDAO is Ownable, ReentrancyGuard {
      * @dev Get top discoveries by votes
      */
     function getTopDiscoveries(uint256 _count) external view returns (uint256[] memory) {
-        uint256[] memory topDiscoveries = new uint256[](_count);
-        uint256[] memory scores = new uint256[](_count);
+        uint256 actualCount = _count;
+        if (actualCount > discoveryProposals.length) {
+            actualCount = discoveryProposals.length;
+        }
+        
+        uint256[] memory topDiscoveries = new uint256[](actualCount);
+        uint256[] memory scores = new uint256[](actualCount);
         
         for (uint256 i = 0; i < discoveryProposals.length; i++) {
             uint256 proposalId = discoveryProposals[i];
             uint256 score = discoveries[proposalId].votingScore;
             
-            for (uint256 j = 0; j < _count; j++) {
+            for (uint256 j = 0; j < actualCount; j++) {
                 if (score > scores[j]) {
                     // Shift down
-                    for (uint256 k = _count - 1; k > j; k--) {
+                    for (uint256 k = actualCount - 1; k > j; k--) {
                         scores[k] = scores[k - 1];
                         topDiscoveries[k] = topDiscoveries[k - 1];
                     }
@@ -286,6 +292,13 @@ contract AstroDAO is Ownable, ReentrancyGuard {
     }
     
     /**
+     * @dev Get knowledge sharing proposals
+     */
+    function getKnowledgeSharingProposals() external view returns (uint256[] memory) {
+        return knowledgeSharingProposals;
+    }
+    
+    /**
      * @dev Check if user has voted on a proposal
      */
     function hasVoted(uint256 _proposalId, address _voter) external view returns (bool) {
@@ -293,14 +306,26 @@ contract AstroDAO is Ownable, ReentrancyGuard {
     }
     
     /**
+     * @dev Get voters for a proposal
+     */
+    function getProposalVoters(uint256 _proposalId) external view returns (address[] memory) {
+        return proposalVoters[_proposalId];
+    }
+    
+    /**
+     * @dev Get total number of unique voters ever
+     */
+    function getTotalVoters() external view returns (uint256) {
+        return allVoters.length;
+    }
+    
+    /**
      * @dev Update governance parameters (only owner)
      */
     function updateParameters(
-        uint256 _minTokensToPropose,
         uint256 _votingPeriod,
         uint256 _quorumPercentage
     ) external onlyOwner {
-        minTokensToPropose = _minTokensToPropose;
         votingPeriod = _votingPeriod;
         quorumPercentage = _quorumPercentage;
     }

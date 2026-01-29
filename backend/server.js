@@ -407,30 +407,50 @@ app.delete('/api/posts/:id', (req, res) => {
 });
 
 // --- 8. AI ENDPOINTS (keeping existing) ---
-
 app.post('/api/chat', async (req, res) => {
-    console.log("🤖 Chat request received");
-    const { prompt } = req.body;
-    
-    if (!HF_API_KEY) {
-        return res.json({
-            choices: [{ text: `Mock response for: "${prompt}" [TRIGGER:GALAXY]`, finish_reason: 'stop' }]
-        });
+  const { prompt, maxTokens = 300, temperature = 0.7, topP = 0.9 } = req.body;
+
+  if (!prompt) {
+    return res.status(400).json({ error: 'No prompt provided' });
+  }
+
+  if (!HF_API_KEY) {
+    return res.status(500).json({ 
+      error: 'HF_API_KEY not configured. Please set it in .env file.' 
+    });
+  }
+
+  try {
+    const response = await fetch(
+      'https://router.huggingface.co/featherless-ai/v1/completions',
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${HF_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'AstroMLab/AstroSage-8B',
+          prompt,
+          max_tokens: maxTokens,
+          temperature,
+          top_p: topP,
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Chat API error: ${response.statusText}`);
     }
-    
-    try {
-        const response = await axios.post(
-            'https://api-inference.huggingface.co/models/AstroMLab/AstroSage-8B',
-            { inputs: prompt, parameters: { max_new_tokens: 300, return_full_text: false, temperature: 0.7, top_p: 0.9 } },
-            { headers: { Authorization: `Bearer ${HF_API_KEY}` } }
-        );
-        
-        const text = Array.isArray(response.data) ? response.data[0]?.generated_text : response.data.generated_text;
-        return res.json({ choices: [{ text: String(text || "No response").trim(), finish_reason: 'stop' }] });
-    } catch (e) {
-        return res.json({ choices: [{ text: `AI unavailable. Mock: "${prompt}" [TRIGGER:GALAXY]`, finish_reason: 'stop' }] });
-    }
+
+    const data = await response.json();
+    res.json(data);
+  } catch (error) {
+    console.error('Chat error:', error);
+    res.status(500).json({ error: error.message });
+  }
 });
+
 
 app.post('/api/identify', async (req, res) => {
     if (!HF_API_KEY) {

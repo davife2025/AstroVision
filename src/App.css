@@ -1,5 +1,22 @@
 
+/* App.css or ResponseCard.css */
 
+.responses-container {
+  display: flex;
+  flex-direction: column; /* Stack vertically */
+  gap: 20px;
+  padding: 20px;
+}
+
+.response-card {
+  width: 100%;
+  /* Newest cards appear at the bottom */
+}
+
+/* Smooth scroll to newest response */
+.responses-container {
+  scroll-behavior: smooth;
+}
 
 
 

@@ -19,6 +19,7 @@ const DAODashboard = () => {
   const [weeklyTopics, setWeeklyTopics] = useState([]);
   const [discoveries, setDiscoveries] = useState([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [notification, setNotification] = useState(null); // For success messages
 
   // Proposal form state
   const [proposalForm, setProposalForm] = useState({
@@ -28,30 +29,39 @@ const DAODashboard = () => {
     ipfsHash: ''
   });
 
-  // Load proposals - wrapped in useCallback to fix React Hook warning
+  // Load proposals - wrapped in useCallback to prevent infinite loops
   const loadProposals = useCallback(async () => {
+    if (!isConnected) {
+      console.log('Not connected, skipping proposal load');
+      return;
+    }
+    
+    console.log('Loading proposals for tab:', activeTab);
+    
     try {
       if (activeTab === 'weekly-topics') {
         const topics = await getWeeklyTopics();
+        console.log('Loaded weekly topics:', topics);
         setWeeklyTopics(topics || []);
       } else if (activeTab === 'discoveries') {
         const topDiscoveries = await getTopDiscoveries(20);
+        console.log('Loaded discoveries:', topDiscoveries);
         setDiscoveries(topDiscoveries || []);
       }
     } catch (error) {
       console.error('Error loading proposals:', error);
     }
-  }, [activeTab, getWeeklyTopics, getTopDiscoveries]);
+  }, [activeTab, getWeeklyTopics, getTopDiscoveries, isConnected]);
 
-  // Load proposals when connected or tab changes
+  // Load proposals when dependencies change
   useEffect(() => {
-    if (isConnected) {
-      loadProposals();
-    }
-  }, [isConnected, loadProposals]);
+    loadProposals();
+  }, [loadProposals]);
 
   const handleCreateProposal = async (e) => {
     e.preventDefault();
+    
+    console.log('Creating proposal:', proposalForm);
     
     try {
       const proposalId = await createProposal(
@@ -61,12 +71,55 @@ const DAODashboard = () => {
         proposalForm.ipfsHash
       );
       
-      alert(`Proposal created successfully! ID: ${proposalId}`);
+      console.log('Proposal created with ID:', proposalId);
+      
+      // Show success notification
+      setNotification({
+        type: 'success',
+        message: `🎉 Proposal #${proposalId} created successfully!`,
+        details: `"${proposalForm.title}" - Your proposal is now live and ready for voting.`
+      });
+      
+      // Auto-hide notification after 5 seconds
+      setTimeout(() => setNotification(null), 5000);
+      
       setShowCreateModal(false);
       setProposalForm({ type: 0, title: '', description: '', ipfsHash: '' });
-      loadProposals();
+      
+      // Immediately add optimistic update to UI
+      const newProposal = {
+        id: proposalId,
+        proposer: account,
+        proposalType: proposalForm.type,
+        title: proposalForm.title,
+        description: proposalForm.description,
+        votesFor: 0,
+        votesAgainst: 0,
+        status: 1, // ACTIVE
+        endTime: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
+      };
+      
+      // Add to appropriate list based on type
+      if (proposalForm.type === 0) {
+        setWeeklyTopics(prev => [newProposal, ...prev]);
+      } else if (proposalForm.type === 1) {
+        setDiscoveries(prev => [newProposal, ...prev]);
+      }
+      
+      // Reload from blockchain after a delay to get accurate data
+      setTimeout(() => {
+        console.log('Reloading proposals from blockchain...');
+        loadProposals();
+      }, 2000);
+      
     } catch (error) {
-      alert('Failed to create proposal: ' + error.message);
+      console.error('Error creating proposal:', error);
+      setNotification({
+        type: 'error',
+        message: '❌ Failed to create proposal',
+        details: error.message
+      });
+      setTimeout(() => setNotification(null), 5000);
     }
   };
 
@@ -87,9 +140,9 @@ const DAODashboard = () => {
   };
 
   const ProposalCard = ({ proposal }) => {
-    const totalVotes = parseFloat(proposal.votesFor) + parseFloat(proposal.votesAgainst);
+    const totalVotes = parseFloat(proposal.votesFor || 0) + parseFloat(proposal.votesAgainst || 0);
     const forPercentage = totalVotes > 0 
-      ? ((parseFloat(proposal.votesFor) / totalVotes) * 100).toFixed(1)
+      ? ((parseFloat(proposal.votesFor || 0) / totalVotes) * 100).toFixed(1)
       : 0;
 
     const getStatusColor = (status) => {
@@ -112,17 +165,55 @@ const DAODashboard = () => {
       }
     };
 
+    // Check if proposal is active (allow voting if status is 1 or undefined for new proposals)
+    const isActive = proposal.status === 1 || proposal.status === undefined;
+    
+    console.log('Proposal Card:', { 
+      id: proposal.id, 
+      status: proposal.status, 
+      isActive,
+      votesFor: proposal.votesFor,
+      votesAgainst: proposal.votesAgainst 
+    });
+
+    // Check if current user created this proposal
+    const isMyProposal = proposal.proposer?.toLowerCase() === account?.toLowerCase();
+
     return (
       <div style={{
-        background: 'rgba(0, 255, 204, 0.05)',
-        border: '1px solid rgba(0, 255, 204, 0.3)',
+        background: isMyProposal 
+          ? 'rgba(0, 255, 204, 0.1)' 
+          : 'rgba(0, 255, 204, 0.05)',
+        border: isMyProposal 
+          ? '2px solid rgba(0, 255, 204, 0.6)' 
+          : '1px solid rgba(0, 255, 204, 0.3)',
         borderRadius: '12px',
         padding: '24px',
-        marginBottom: '16px'
+        marginBottom: '16px',
+        position: 'relative'
       }}>
+        {/* "Your Proposal" Badge */}
+        {isMyProposal && (
+          <div style={{
+            position: 'absolute',
+            top: '12px',
+            right: '12px',
+            background: 'linear-gradient(135deg, #00ffcc, #00ff00)',
+            color: '#000',
+            padding: '4px 12px',
+            borderRadius: '12px',
+            fontSize: '11px',
+            fontWeight: 'bold'
+          }}>
+            YOUR PROPOSAL
+          </div>
+        )}
+        
         <div style={{ marginBottom: '16px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h3 style={{ color: '#00ffcc', margin: '0 0 8px 0' }}>{proposal.title}</h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+            <h3 style={{ color: '#00ffcc', margin: '0', paddingRight: '120px' }}>
+              {proposal.title}
+            </h3>
             <span style={{ 
               color: getStatusColor(proposal.status),
               fontSize: '12px',
@@ -134,8 +225,16 @@ const DAODashboard = () => {
           <p style={{ color: '#ccc', fontSize: '14px', margin: '8px 0' }}>
             {proposal.description}
           </p>
-          <div style={{ fontSize: '12px', color: '#888' }}>
-            Proposed by: {formatAddress(proposal.proposer)}
+          <div style={{ 
+            fontSize: '12px', 
+            color: isMyProposal ? '#00ffcc' : '#888',
+            fontWeight: isMyProposal ? 'bold' : 'normal'
+          }}>
+            {isMyProposal ? (
+              <>🎯 You created this proposal</>
+            ) : (
+              <>Proposed by: {formatAddress(proposal.proposer)}</>
+            )}
           </div>
         </div>
 
@@ -166,8 +265,8 @@ const DAODashboard = () => {
           </div>
         </div>
 
-        {/* Vote Buttons */}
-        {proposal.status === 1 && (
+        {/* Vote Buttons - Show for active proposals */}
+        {isActive && (
           <div style={{ display: 'flex', gap: '12px' }}>
             <button
               onClick={() => handleVote(proposal.id, true)}
@@ -222,6 +321,54 @@ const DAODashboard = () => {
       padding: '40px 20px',
       color: '#fff'
     }}>
+      {/* Success/Error Notification */}
+      {notification && (
+        <div style={{
+          position: 'fixed',
+          top: '20px',
+          right: '20px',
+          maxWidth: '400px',
+          background: notification.type === 'success' 
+            ? 'linear-gradient(135deg, rgba(0, 255, 0, 0.2), rgba(0, 255, 204, 0.2))'
+            : 'linear-gradient(135deg, rgba(255, 0, 0, 0.2), rgba(255, 100, 0, 0.2))',
+          border: notification.type === 'success'
+            ? '2px solid #00ff00'
+            : '2px solid #ff0000',
+          borderRadius: '12px',
+          padding: '20px',
+          zIndex: 9999,
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)',
+          animation: 'slideIn 0.3s ease-out'
+        }}>
+          <div style={{ 
+            fontSize: '16px', 
+            fontWeight: 'bold',
+            color: notification.type === 'success' ? '#00ff00' : '#ff0000',
+            marginBottom: '8px'
+          }}>
+            {notification.message}
+          </div>
+          <div style={{ fontSize: '14px', color: '#ccc' }}>
+            {notification.details}
+          </div>
+          <button
+            onClick={() => setNotification(null)}
+            style={{
+              position: 'absolute',
+              top: '10px',
+              right: '10px',
+              background: 'transparent',
+              border: 'none',
+              color: '#888',
+              cursor: 'pointer',
+              fontSize: '20px'
+            }}
+          >
+            ×
+          </button>
+        </div>
+      )}
+
       {/* Header */}
       <div style={{
         textAlign: 'center',

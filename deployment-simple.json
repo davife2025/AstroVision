@@ -1,0 +1,12 @@
+{
+  "network": "bscTestnet",
+  "deployer": "0xbe59dE307Ba466B4f20fbf6bAf60c5612a81DBD1",
+  "timestamp": "2026-01-29T04:15:59.069Z",
+  "contract": {
+    "AstroDAO": {
+      "address": "0x1B8D59d59007E54345203126d3681EDd8F3e647c",
+      "votingPeriod": "604800",
+      "quorum": "10%"
+    }
+  }
+}

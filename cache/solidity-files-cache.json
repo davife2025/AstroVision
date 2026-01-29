@@ -2,8 +2,8 @@
   "_format": "hh-sol-cache-2",
   "files": {
     "C:\\Users\\USER\\Desktop\\Astro\\my-app\\contracts\\AstroDAO.sol": {
-      "lastModificationDate": 1769605929176,
-      "contentHash": "1cd92e52738fde66e115a095dfe4015d",
+      "lastModificationDate": 1769646076641,
+      "contentHash": "2febb91cc67e5d3d238bbd398784b35c",
       "sourceName": "contracts/AstroDAO.sol",
       "solcConfig": {
         "version": "0.8.20",
@@ -30,7 +30,6 @@
         }
       },
       "imports": [
-        "@openzeppelin/contracts/token/ERC20/IERC20.sol",
         "@openzeppelin/contracts/access/Ownable.sol",
         "@openzeppelin/contracts/utils/ReentrancyGuard.sol"
       ],
